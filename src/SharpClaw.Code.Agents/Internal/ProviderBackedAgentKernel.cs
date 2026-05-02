@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SharpClaw.Code.Agents.Configuration;
 using SharpClaw.Code.Agents.Models;
+using SharpClaw.Code.Infrastructure.Abstractions;
 using SharpClaw.Code.Protocol.Events;
 using SharpClaw.Code.Protocol.Models;
 using SharpClaw.Code.Providers.Abstractions;
@@ -23,6 +24,7 @@ public sealed class ProviderBackedAgentKernel(
     IAuthFlowService authFlowService,
     ToolCallDispatcher toolCallDispatcher,
     IOptions<AgentLoopOptions> loopOptions,
+    ISystemClock systemClock,
     ILogger<ProviderBackedAgentKernel> logger)
 {
     internal async Task<ProviderInvocationResult> ExecuteAsync(
@@ -78,17 +80,21 @@ public sealed class ProviderBackedAgentKernel(
                     exception);
             }
 
-            if (!authStatus.IsAuthenticated)
+            var authExpired = ProviderStreamFailureClassifier.IsExpired(authStatus, systemClock.UtcNow);
+            if (!authStatus.IsAuthenticated || authExpired)
             {
                 logger.LogWarning(
-                    "Provider {ProviderName} is not authenticated for session {SessionId}.",
+                    "Provider {ProviderName} is not authenticated or its auth status expired for session {SessionId}.",
                     resolvedProviderName,
                     request.Context.SessionId);
+                var message = authExpired
+                    ? $"Provider '{resolvedProviderName}' authentication expired at {authStatus.ExpiresAtUtc:O}."
+                    : $"Provider '{resolvedProviderName}' is not authenticated.";
                 throw new ProviderExecutionException(
                     resolvedProviderName,
                     requestedModel,
                     ProviderFailureKind.AuthenticationUnavailable,
-                    $"Provider '{resolvedProviderName}' is not authenticated.");
+                    message);
             }
 
             // --- Resolve provider ---
@@ -159,6 +165,17 @@ public sealed class ProviderBackedAgentKernel(
                     await foreach (var providerEvent in stream.Events.WithCancellation(cancellationToken))
                     {
                         allProviderEvents.Add(providerEvent);
+
+                        if (providerEvent.IsTerminal
+                            && string.Equals(providerEvent.Kind, "failed", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var failureKind = ProviderStreamFailureClassifier.ClassifyFailedEvent(providerEvent);
+                            throw new ProviderExecutionException(
+                                resolvedProviderName,
+                                requestedModel,
+                                failureKind,
+                                CreateProviderFailedEventMessage(resolvedProviderName, providerEvent));
+                        }
 
                         if (!providerEvent.IsTerminal && !string.IsNullOrWhiteSpace(providerEvent.Content))
                         {
@@ -343,4 +360,12 @@ public sealed class ProviderBackedAgentKernel(
             model,
             ProviderFailureKind.MissingProvider,
             $"No provider named '{providerName}' was registered during {stage}.");
+
+    private static string CreateProviderFailedEventMessage(string providerName, ProviderEvent providerEvent)
+    {
+        var detail = string.IsNullOrWhiteSpace(providerEvent.Content)
+            ? "The provider stream ended with a failure event."
+            : providerEvent.Content;
+        return $"Provider '{providerName}' stream failed: {detail}";
+    }
 }

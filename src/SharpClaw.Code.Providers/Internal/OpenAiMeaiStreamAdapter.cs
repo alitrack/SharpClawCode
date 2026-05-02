@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.AI;
 using SharpClaw.Code.Infrastructure.Abstractions;
+using SharpClaw.Code.Providers.Models;
 using SharpClaw.Code.Protocol.Models;
 
 namespace SharpClaw.Code.Providers.Internal;
@@ -38,7 +39,8 @@ internal static class OpenAiMeaiStreamAdapter
                 }
                 catch (Exception ex)
                 {
-                    streamError = ex.Message;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    streamError = ProviderStreamFailureClassifier.Describe(ex);
                     moved = false;
                 }
 

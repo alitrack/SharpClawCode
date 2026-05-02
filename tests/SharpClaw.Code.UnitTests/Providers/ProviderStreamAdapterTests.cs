@@ -1,9 +1,11 @@
 using System.Globalization;
+using System.Text.Json;
 using Anthropic.Models.Messages;
 using FluentAssertions;
 using Microsoft.Extensions.AI;
 using SharpClaw.Code.Infrastructure.Abstractions;
 using SharpClaw.Code.Providers.Internal;
+using SharpClaw.Code.Providers.Models;
 using SharpClaw.Code.Protocol.Models;
 
 namespace SharpClaw.Code.UnitTests.Providers;
@@ -76,6 +78,76 @@ public sealed class ProviderStreamAdapterTests
     }
 
     [Fact]
+    public async Task OpenAi_meai_adapter_emits_failed_event_when_sse_data_is_malformed()
+    {
+        var clock = new FixedSystemClock();
+
+        async IAsyncEnumerable<ChatResponseUpdate> Stream()
+        {
+            await Task.Yield();
+            throw new JsonException("Malformed SSE data payload.");
+#pragma warning disable CS0162
+            yield return new ChatResponseUpdate(ChatRole.Assistant, []);
+#pragma warning restore CS0162
+        }
+
+        var events = new List<ProviderEvent>();
+        await foreach (var e in OpenAiMeaiStreamAdapter.AdaptAsync(Stream(), "req-openai-bad-sse", clock, CancellationToken.None))
+        {
+            events.Add(e);
+        }
+
+        events.Should().ContainSingle();
+        events[0].Kind.Should().Be("failed");
+        events[0].IsTerminal.Should().BeTrue();
+        events[0].Content.Should().Contain("Malformed SSE data payload");
+    }
+
+    [Fact]
+    public async Task OpenAi_meai_adapter_preserves_cancellation_when_stream_reports_transport_error_after_cancel()
+    {
+        var clock = new FixedSystemClock();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        async IAsyncEnumerable<ChatResponseUpdate> Stream()
+        {
+            await Task.Yield();
+            throw new IOException("socket closed while reading SSE data.");
+#pragma warning disable CS0162
+            yield return new ChatResponseUpdate(ChatRole.Assistant, []);
+#pragma warning restore CS0162
+        }
+
+        var act = async () =>
+        {
+            await foreach (var _ in OpenAiMeaiStreamAdapter.AdaptAsync(Stream(), "req-openai-cancel", clock, cts.Token))
+            {
+            }
+        };
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public void ProviderStreamFailureClassifier_preserves_reflected_http_status_for_auth_failures()
+    {
+        var exception = new ProviderStatusException(System.Net.HttpStatusCode.Unauthorized, "token expired");
+        var failedEvent = new ProviderEvent(
+            "provider-event-auth",
+            "req-auth",
+            "failed",
+            DateTimeOffset.UtcNow,
+            ProviderStreamFailureClassifier.Describe(exception),
+            true,
+            null);
+
+        ProviderStreamFailureClassifier.IsAuthenticationFailure(exception).Should().BeTrue();
+        failedEvent.Content.Should().StartWith("HTTP 401 Unauthorized:");
+        ProviderStreamFailureClassifier.ClassifyFailedEvent(failedEvent).Should().Be(ProviderFailureKind.AuthenticationUnavailable);
+    }
+
+    [Fact]
     public async Task Anthropic_sdk_adapter_maps_content_block_deltas_and_stop()
     {
         var clock = new FixedSystemClock();
@@ -114,8 +186,65 @@ public sealed class ProviderStreamAdapterTests
         events[^1].IsTerminal.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task Anthropic_sdk_adapter_emits_failed_event_when_sse_data_is_malformed()
+    {
+        var clock = new FixedSystemClock();
+
+        async IAsyncEnumerable<RawMessageStreamEvent> Stream()
+        {
+            await Task.Yield();
+            throw new JsonException("Malformed Anthropic SSE data payload.");
+#pragma warning disable CS0162
+            yield return new RawMessageStreamEvent(new RawMessageStopEvent(), default);
+#pragma warning restore CS0162
+        }
+
+        var events = new List<ProviderEvent>();
+        await foreach (var e in AnthropicSdkStreamAdapter.AdaptAsync(Stream(), "req-anthropic-bad-sse", clock, CancellationToken.None))
+        {
+            events.Add(e);
+        }
+
+        events.Should().ContainSingle();
+        events[0].Kind.Should().Be("failed");
+        events[0].IsTerminal.Should().BeTrue();
+        events[0].Content.Should().Contain("Malformed Anthropic SSE data payload");
+    }
+
+    [Fact]
+    public async Task Anthropic_sdk_adapter_preserves_cancellation_when_stream_reports_transport_error_after_cancel()
+    {
+        var clock = new FixedSystemClock();
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        async IAsyncEnumerable<RawMessageStreamEvent> Stream()
+        {
+            await Task.Yield();
+            throw new IOException("socket closed while reading Anthropic SSE data.");
+#pragma warning disable CS0162
+            yield return new RawMessageStreamEvent(new RawMessageStopEvent(), default);
+#pragma warning restore CS0162
+        }
+
+        var act = async () =>
+        {
+            await foreach (var _ in AnthropicSdkStreamAdapter.AdaptAsync(Stream(), "req-anthropic-cancel", clock, cts.Token))
+            {
+            }
+        };
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     private sealed class FixedSystemClock : ISystemClock
     {
         public DateTimeOffset UtcNow => DateTimeOffset.Parse("2026-04-06T00:00:00Z", CultureInfo.InvariantCulture);
+    }
+
+    private sealed class ProviderStatusException(System.Net.HttpStatusCode statusCode, string message) : Exception(message)
+    {
+        public System.Net.HttpStatusCode StatusCode { get; } = statusCode;
     }
 }

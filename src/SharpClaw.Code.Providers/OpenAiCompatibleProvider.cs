@@ -39,6 +39,7 @@ public sealed class OpenAiCompatibleProvider(
     /// <inheritdoc />
     public Task<ProviderStreamHandle> StartStreamAsync(ProviderRequest request, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         logger.LogInformation("Starting OpenAI-compatible MEAI stream for request {RequestId}.", request.Id);
         return Task.FromResult(new ProviderStreamHandle(request, StreamEventsAsync(request, cancellationToken)));
     }
