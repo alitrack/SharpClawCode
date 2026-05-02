@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using Anthropic.Models.Messages;
 using SharpClaw.Code.Infrastructure.Abstractions;
+using SharpClaw.Code.Providers.Models;
 using SharpClaw.Code.Protocol.Models;
 
 namespace SharpClaw.Code.Providers.Internal;
@@ -42,7 +43,8 @@ internal static class AnthropicSdkStreamAdapter
                 }
                 catch (Exception ex)
                 {
-                    streamError = ex.Message;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    streamError = ProviderStreamFailureClassifier.Describe(ex);
                     moved = false;
                 }
 

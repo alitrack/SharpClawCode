@@ -130,6 +130,84 @@ public sealed class ProviderRuntimeEventFlowTests
     }
 
     /// <summary>
+    /// Ensures already-expired provider auth fails before any stream is started.
+    /// </summary>
+    [Fact]
+    public async Task RunPrompt_should_fail_when_provider_auth_expired_before_stream()
+    {
+        var workspacePath = CreateTemporaryWorkspace();
+        using var serviceProvider = CreateRuntimeServices(services =>
+        {
+            services.AddSingleton<IProviderRequestPreflight, PassthroughPreflight>();
+            services.AddSingleton<IAuthFlowService, ExpiredAuthFlowService>();
+            services.AddSingleton<IModelProviderResolver, FailIfInvokedModelProviderResolver>();
+        });
+        var runtime = serviceProvider.GetRequiredService<IConversationRuntime>();
+        var sessionStore = serviceProvider.GetRequiredService<ISessionStore>();
+
+        var act = async () => await runtime.RunPromptAsync(
+            new RunPromptRequest(
+                Prompt: "provider auth expired",
+                SessionId: null,
+                WorkingDirectory: workspacePath,
+                PermissionMode: PermissionMode.WorkspaceWrite,
+                OutputFormat: OutputFormat.Text,
+                Metadata: new Dictionary<string, string>
+                {
+                    ["provider"] = "stub-provider",
+                    ["model"] = "stub-model"
+                }),
+            CancellationToken.None);
+
+        var exception = await act.Should().ThrowAsync<ProviderExecutionException>();
+        exception.Which.Kind.Should().Be(ProviderFailureKind.AuthenticationUnavailable);
+        exception.Which.Message.Should().Contain("expired");
+
+        var latestSession = await sessionStore.GetLatestAsync(workspacePath, CancellationToken.None);
+        latestSession.Should().NotBeNull();
+        latestSession!.State.Should().Be(SessionLifecycleState.Failed);
+    }
+
+    /// <summary>
+    /// Ensures auth expiration reported by a streamed failure event fails the turn instead of returning partial text.
+    /// </summary>
+    [Fact]
+    public async Task RunPrompt_should_fail_when_provider_stream_reports_expired_auth()
+    {
+        var workspacePath = CreateTemporaryWorkspace();
+        using var serviceProvider = CreateRuntimeServices(services =>
+        {
+            services.AddSingleton<IProviderRequestPreflight, PassthroughPreflight>();
+            services.AddSingleton<IAuthFlowService, AlwaysAuthenticatedAuthFlowService>();
+            services.AddSingleton<IModelProviderResolver, AuthFailedEventModelProviderResolver>();
+        });
+        var runtime = serviceProvider.GetRequiredService<IConversationRuntime>();
+        var sessionStore = serviceProvider.GetRequiredService<ISessionStore>();
+
+        var act = async () => await runtime.RunPromptAsync(
+            new RunPromptRequest(
+                Prompt: "provider auth expires mid-stream",
+                SessionId: null,
+                WorkingDirectory: workspacePath,
+                PermissionMode: PermissionMode.WorkspaceWrite,
+                OutputFormat: OutputFormat.Text,
+                Metadata: new Dictionary<string, string>
+                {
+                    ["provider"] = "stub-provider",
+                    ["model"] = "stub-model"
+                }),
+            CancellationToken.None);
+
+        var exception = await act.Should().ThrowAsync<ProviderExecutionException>();
+        exception.Which.Kind.Should().Be(ProviderFailureKind.AuthenticationUnavailable);
+        exception.Which.Message.Should().Contain("401");
+
+        var latestSession = await sessionStore.GetLatestAsync(workspacePath, CancellationToken.None);
+        latestSession.Should().NotBeNull();
+        latestSession!.State.Should().Be(SessionLifecycleState.Failed);
+    }
+
+    /// <summary>
     /// Ensures unauthenticated providers fail explicitly instead of returning placeholder content.
     /// </summary>
     [Fact]
@@ -200,6 +278,18 @@ public sealed class ProviderRuntimeEventFlowTests
             => Task.FromResult(new AuthStatus("stub-subject", false, providerName, null, null, ["api"]));
     }
 
+    private sealed class ExpiredAuthFlowService : IAuthFlowService
+    {
+        public Task<AuthStatus> GetStatusAsync(string providerName, CancellationToken cancellationToken)
+            => Task.FromResult(new AuthStatus(
+                "stub-subject",
+                true,
+                providerName,
+                null,
+                DateTimeOffset.UtcNow.AddMinutes(-1),
+                ["api"]));
+    }
+
     private sealed class StubModelProviderResolver : IModelProviderResolver
     {
         public IModelProvider Resolve(string providerName) => new StubModelProvider();
@@ -208,6 +298,16 @@ public sealed class ProviderRuntimeEventFlowTests
     private sealed class ThrowingModelProviderResolver : IModelProviderResolver
     {
         public IModelProvider Resolve(string providerName) => new ThrowingModelProvider();
+    }
+
+    private sealed class FailIfInvokedModelProviderResolver : IModelProviderResolver
+    {
+        public IModelProvider Resolve(string providerName) => new FailIfInvokedModelProvider();
+    }
+
+    private sealed class AuthFailedEventModelProviderResolver : IModelProviderResolver
+    {
+        public IModelProvider Resolve(string providerName) => new AuthFailedEventModelProvider();
     }
 
     private sealed class StubModelProvider : IModelProvider
@@ -247,6 +347,42 @@ public sealed class ProviderRuntimeEventFlowTests
 #pragma warning disable CS0162
             yield break;
 #pragma warning restore CS0162
+        }
+    }
+
+    private sealed class FailIfInvokedModelProvider : IModelProvider
+    {
+        public string ProviderName => "stub-provider";
+
+        public Task<AuthStatus> GetAuthStatusAsync(CancellationToken cancellationToken)
+            => Task.FromResult(new AuthStatus("stub-subject", true, ProviderName, null, null, ["api"]));
+
+        public Task<ProviderStreamHandle> StartStreamAsync(ProviderRequest request, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("The provider stream should not start when auth is expired.");
+    }
+
+    private sealed class AuthFailedEventModelProvider : IModelProvider
+    {
+        public string ProviderName => "stub-provider";
+
+        public Task<AuthStatus> GetAuthStatusAsync(CancellationToken cancellationToken)
+            => Task.FromResult(new AuthStatus("stub-subject", true, ProviderName, null, null, ["api"]));
+
+        public Task<ProviderStreamHandle> StartStreamAsync(ProviderRequest request, CancellationToken cancellationToken)
+            => Task.FromResult(new ProviderStreamHandle(request, StreamEventsAsync(request)));
+
+        private static async IAsyncEnumerable<ProviderEvent> StreamEventsAsync(ProviderRequest request)
+        {
+            yield return new ProviderEvent("provider-event-auth-1", request.Id, "delta", BaseTimestampUtc.AddMilliseconds(1), "partial", false, null);
+            await Task.Yield();
+            yield return new ProviderEvent(
+                "provider-event-auth-2",
+                request.Id,
+                "failed",
+                BaseTimestampUtc.AddMilliseconds(2),
+                "HTTP 401 Unauthorized: token expired during streamed response.",
+                true,
+                null);
         }
     }
 }

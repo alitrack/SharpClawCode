@@ -34,8 +34,9 @@ public sealed class AnthropicProvider(
             hasAuthOptionalRuntime: false));
 
     /// <inheritdoc />
-    public async Task<ProviderStreamHandle> StartStreamAsync(ProviderRequest request, CancellationToken cancellationToken)
+    public Task<ProviderStreamHandle> StartStreamAsync(ProviderRequest request, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var client = CreateClient();
         var modelId = Internal.ProviderHttpHelpers.ResolveModelOrDefault(request.Model, _options.DefaultModel);
 
@@ -84,10 +85,30 @@ public sealed class AnthropicProvider(
             parameters = parameters with { System = systemPrompt };
         }
 
+        logger.LogInformation("Starting Anthropic SDK stream for request {RequestId}.", request.Id);
+
+        IAsyncEnumerable<RawMessageStreamEvent> stream;
+        try
+        {
+            stream = client.Messages.CreateStreaming(parameters, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception) when (ProviderStreamFailureClassifier.IsAuthenticationFailure(exception))
+        {
+            throw new ProviderExecutionException(
+                ProviderName,
+                modelId,
+                ProviderFailureKind.AuthenticationUnavailable,
+                $"Provider '{ProviderName}' authentication failed while starting the stream.",
+                exception);
+        }
+
         logger.LogInformation("Started Anthropic SDK stream for request {RequestId}.", request.Id);
 
-        var stream = client.Messages.CreateStreaming(parameters, cancellationToken);
-        return new ProviderStreamHandle(request, AnthropicSdkStreamAdapter.AdaptAsync(stream, request.Id, systemClock, cancellationToken));
+        return Task.FromResult(new ProviderStreamHandle(request, AnthropicSdkStreamAdapter.AdaptAsync(stream, request.Id, systemClock, cancellationToken)));
     }
 
     private AnthropicClient CreateClient()
