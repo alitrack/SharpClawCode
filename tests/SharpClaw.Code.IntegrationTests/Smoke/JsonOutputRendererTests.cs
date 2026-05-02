@@ -17,26 +17,17 @@ public sealed class JsonOutputRendererTests
     [Fact]
     public async Task RenderCommandResultAsync_should_wrap_data_payload_in_stable_envelope()
     {
-        var renderer = new JsonOutputRenderer();
         using var writer = new StringWriter();
-        var originalOut = Console.Out;
-        Console.SetOut(writer);
+        var renderer = new JsonOutputRenderer(outputWriter: writer);
 
-        try
-        {
-            await renderer.RenderCommandResultAsync(
-                new CommandResult(
-                    Succeeded: true,
-                    ExitCode: 0,
-                    OutputFormat: OutputFormat.Text,
-                    Message: "ok",
-                    DataJson: """{"version":"1.2.3"}"""),
-                CancellationToken.None);
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-        }
+        await renderer.RenderCommandResultAsync(
+            new CommandResult(
+                Succeeded: true,
+                ExitCode: 0,
+                OutputFormat: OutputFormat.Text,
+                Message: "ok",
+                DataJson: """{"version":"1.2.3"}"""),
+            CancellationToken.None);
 
         using var document = JsonDocument.Parse(writer.ToString());
         var root = document.RootElement;
@@ -54,26 +45,17 @@ public sealed class JsonOutputRendererTests
     [Fact]
     public async Task RenderCommandResultAsync_should_fall_back_to_data_raw_for_invalid_payloads()
     {
-        var renderer = new JsonOutputRenderer();
         using var writer = new StringWriter();
-        var originalOut = Console.Out;
-        Console.SetOut(writer);
+        var renderer = new JsonOutputRenderer(outputWriter: writer);
 
-        try
-        {
-            await renderer.RenderCommandResultAsync(
-                new CommandResult(
-                    Succeeded: false,
-                    ExitCode: 1,
-                    OutputFormat: OutputFormat.Text,
-                    Message: "bad",
-                    DataJson: "{not-json"),
-                CancellationToken.None);
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-        }
+        await renderer.RenderCommandResultAsync(
+            new CommandResult(
+                Succeeded: false,
+                ExitCode: 1,
+                OutputFormat: OutputFormat.Text,
+                Message: "bad",
+                DataJson: "{not-json"),
+            CancellationToken.None);
 
         using var document = JsonDocument.Parse(writer.ToString());
         var root = document.RootElement;

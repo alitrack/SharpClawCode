@@ -12,9 +12,13 @@ namespace SharpClaw.Code.Cli.Rendering;
 /// <summary>
 /// Renders command and prompt results as JSON.
 /// </summary>
-public sealed class JsonOutputRenderer(ILogger<JsonOutputRenderer>? logger = null) : IOutputRenderer
+public sealed class JsonOutputRenderer(
+    ILogger<JsonOutputRenderer>? logger = null,
+    TextWriter? outputWriter = null) : IOutputRenderer
 {
     private readonly ILogger<JsonOutputRenderer> _logger = logger ?? NullLogger<JsonOutputRenderer>.Instance;
+    private readonly TextWriter? _outputWriter = outputWriter;
+
     /// <inheritdoc />
     public OutputFormat Format => OutputFormat.Json;
 
@@ -47,15 +51,18 @@ public sealed class JsonOutputRenderer(ILogger<JsonOutputRenderer>? logger = nul
                 dataRaw),
             JsonOutputJsonContext.Default.JsonCommandEnvelope);
 
-        return Console.Out.WriteLineAsync(json.AsMemory(), cancellationToken);
+        return WriteLineAsync(json, cancellationToken);
     }
 
     /// <inheritdoc />
     public Task RenderTurnExecutionResultAsync(TurnExecutionResult result, CancellationToken cancellationToken)
     {
         var json = JsonSerializer.Serialize(result, ProtocolJsonContext.Default.TurnExecutionResult);
-        return Console.Out.WriteLineAsync(json.AsMemory(), cancellationToken);
+        return WriteLineAsync(json, cancellationToken);
     }
+
+    private Task WriteLineAsync(string json, CancellationToken cancellationToken)
+        => (_outputWriter ?? Console.Out).WriteLineAsync(json.AsMemory(), cancellationToken);
 }
 
 internal sealed record JsonCommandEnvelope(
