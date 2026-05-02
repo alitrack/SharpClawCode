@@ -85,7 +85,7 @@ public sealed class AnthropicProvider(
             parameters = parameters with { System = systemPrompt };
         }
 
-        logger.LogInformation("Started Anthropic SDK stream for request {RequestId}.", request.Id);
+        logger.LogInformation("Starting Anthropic SDK stream for request {RequestId}.", request.Id);
 
         IAsyncEnumerable<RawMessageStreamEvent> stream;
         try
@@ -105,6 +105,8 @@ public sealed class AnthropicProvider(
                 $"Provider '{ProviderName}' authentication failed while starting the stream.",
                 exception);
         }
+
+        logger.LogInformation("Started Anthropic SDK stream for request {RequestId}.", request.Id);
 
         return Task.FromResult(new ProviderStreamHandle(request, AnthropicSdkStreamAdapter.AdaptAsync(stream, request.Id, systemClock, cancellationToken)));
     }
