@@ -102,6 +102,12 @@ public static class RuntimeServiceCollectionExtensions
         services.AddSingleton<FileSessionStore>();
         services.AddSingleton<SqliteSessionStore>();
         services.AddSingleton<ISessionStore, HostAwareSessionStore>();
+        services.AddSingleton<FileScheduledPromptStore>();
+        services.AddSingleton<SqliteScheduledPromptStore>();
+        services.AddSingleton<IScheduledPromptStore, HostAwareScheduledPromptStore>();
+        services.AddSingleton<FileEvolutionProposalStore>();
+        services.AddSingleton<SqliteEvolutionProposalStore>();
+        services.AddSingleton<IEvolutionProposalStore, HostAwareEvolutionProposalStore>();
         services.AddSingleton<NdjsonEventStore>();
         services.AddSingleton<SqliteEventStore>();
         services.AddSingleton<IEventStore, HostAwareEventStore>();
@@ -120,6 +126,11 @@ public static class RuntimeServiceCollectionExtensions
         services.AddSingleton<IPromptReferenceResolver, PromptReferenceResolver>();
         services.AddSingleton<IPlanWorkflowService, PlanWorkflowService>();
         services.AddSingleton<ISpecWorkflowService, SpecWorkflowService>();
+        services.AddSingleton<ISessionPreferenceService, SessionPreferenceService>();
+        services.AddSingleton<IResearchWorkflowService, ResearchWorkflowService>();
+        services.AddSingleton<IWorkspaceBootstrapService, WorkspaceBootstrapService>();
+        services.AddSingleton<IScheduledPromptService, ScheduledPromptService>();
+        services.AddSingleton<IEvolutionProposalService, EvolutionProposalService>();
         services.AddSingleton<ISharpClawConfigService, SharpClawConfigService>();
         services.AddSingleton<SharpClaw.Code.Permissions.Abstractions.IApprovalIdentityService, ConfiguredApprovalIdentityService>();
         services.AddSingleton<IAgentCatalogService, AgentCatalogService>();
@@ -139,6 +150,7 @@ public static class RuntimeServiceCollectionExtensions
         services.AddSingleton<IConversationRuntime>(serviceProvider => serviceProvider.GetRequiredService<Orchestration.ConversationRuntime>());
         services.AddSingleton<IRuntimeCommandService>(serviceProvider => serviceProvider.GetRequiredService<Orchestration.ConversationRuntime>());
         services.AddHostedService<Orchestration.RuntimeCoordinatorHostedServiceAdapter>();
+        services.AddHostedService<ScheduledPromptRunner>();
         return services;
     }
 

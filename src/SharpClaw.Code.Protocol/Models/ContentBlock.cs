@@ -25,6 +25,12 @@ public enum ContentBlockKind
     /// </summary>
     [JsonStringEnumMemberName("tool_result")]
     ToolResult,
+
+    /// <summary>
+    /// Binary or URI-backed image input.
+    /// </summary>
+    [JsonStringEnumMemberName("image")]
+    Image,
 }
 
 /// <summary>
@@ -36,10 +42,16 @@ public enum ContentBlockKind
 /// <param name="ToolName">Tool name, used for <see cref="ContentBlockKind.ToolUse"/> kind.</param>
 /// <param name="ToolInputJson">Tool input serialized as a JSON string, used for <see cref="ContentBlockKind.ToolUse"/> kind.</param>
 /// <param name="IsError">Whether the tool result represents an error, used for <see cref="ContentBlockKind.ToolResult"/> kind.</param>
+/// <param name="MediaType">Optional media type for binary data, used for <see cref="ContentBlockKind.Image"/>.</param>
+/// <param name="Data">Optional raw data payload, typically base64 for image input.</param>
+/// <param name="Uri">Optional source URI for externally addressable content.</param>
 public sealed record ContentBlock(
     ContentBlockKind Kind,
     string? Text,
     string? ToolUseId,
     string? ToolName,
     string? ToolInputJson,
-    bool? IsError);
+    bool? IsError,
+    string? MediaType = null,
+    string? Data = null,
+    string? Uri = null);

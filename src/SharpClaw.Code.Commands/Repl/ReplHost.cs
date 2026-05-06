@@ -124,6 +124,7 @@ public sealed class ReplHost(
                                     argLine,
                                     context.ToRuntimeCommandContext(
                                         primaryModeOverride: replInteractionState.PrimaryModeOverride ?? context.PrimaryMode,
+                                        permissionModeOverride: replInteractionState.PermissionModeOverride ?? context.PermissionMode,
                                         agentIdOverride: replInteractionState.AgentIdOverride ?? context.AgentId,
                                         approvalSettingsOverride: replInteractionState.ApprovalSettingsOverride),
                                     cancellationToken)
@@ -190,6 +191,7 @@ public sealed class ReplHost(
                 prompt,
                 context.ToRuntimeCommandContext(
                     primaryModeOverride: replInteractionState.PrimaryModeOverride ?? context.PrimaryMode,
+                    permissionModeOverride: replInteractionState.PermissionModeOverride ?? context.PermissionMode,
                     agentIdOverride: replInteractionState.AgentIdOverride ?? context.AgentId,
                     approvalSettingsOverride: replInteractionState.ApprovalSettingsOverride),
                 cancellationToken).ConfigureAwait(false);

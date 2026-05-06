@@ -68,6 +68,20 @@ internal static class AnthropicMessageBuilder
                 var textParam = new TextBlockParam { Text = block.Text ?? string.Empty };
                 return new ContentBlockParam(textParam, null);
 
+            case ContentBlockKind.Image:
+                if (string.IsNullOrWhiteSpace(block.Data))
+                {
+                    return null;
+                }
+
+                var imageSource = new Base64ImageSource
+                {
+                    Data = block.Data,
+                    MediaType = ResolveMediaType(block.MediaType),
+                };
+                var imageParam = new ImageBlockParam(new ImageBlockParamSource(imageSource, null));
+                return new ContentBlockParam(imageParam, null);
+
             case ContentBlockKind.ToolUse:
                 var input = ParseInputJson(block.ToolInputJson);
                 var toolUseParam = new ToolUseBlockParam
@@ -145,4 +159,13 @@ internal static class AnthropicMessageBuilder
                     p => p.Value.Clone());
         }
     }
+
+    private static MediaType ResolveMediaType(string? mediaType)
+        => mediaType?.Trim().ToLowerInvariant() switch
+        {
+            "image/png" => MediaType.ImagePng,
+            "image/gif" => MediaType.ImageGif,
+            "image/webp" => MediaType.ImageWebP,
+            _ => MediaType.ImageJpeg,
+        };
 }

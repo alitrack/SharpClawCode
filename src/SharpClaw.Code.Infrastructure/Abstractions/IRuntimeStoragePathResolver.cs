@@ -59,6 +59,18 @@ public interface IRuntimeStoragePathResolver
     /// <summary>Gets the workspace telemetry directory path.</summary>
     string GetTelemetryRoot(string workspacePath);
 
+    /// <summary>Gets the workspace scheduled prompt catalog path.</summary>
+    string GetScheduledPromptsPath(string workspacePath);
+
+    /// <summary>Gets the workspace scheduled prompt lock path.</summary>
+    string GetScheduledPromptsLockPath(string workspacePath);
+
+    /// <summary>Gets the workspace evolution proposal catalog path.</summary>
+    string GetEvolutionProposalsPath(string workspacePath);
+
+    /// <summary>Gets the workspace evolution proposal lock path.</summary>
+    string GetEvolutionProposalsLockPath(string workspacePath);
+
     /// <summary>Gets the SQLite database path used by usage metering.</summary>
     string GetUsageMeteringDatabasePath(string workspacePath);
 

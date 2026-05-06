@@ -25,4 +25,10 @@ public enum PrimaryMode
     /// </summary>
     [JsonStringEnumMemberName("spec")]
     Spec,
+
+    /// <summary>
+    /// Research posture: read-only investigation with explicit sourcing and confidence notes.
+    /// </summary>
+    [JsonStringEnumMemberName("research")]
+    Research,
 }

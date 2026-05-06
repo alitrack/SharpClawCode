@@ -115,6 +115,7 @@ public static class ProvidersServiceCollectionExtensions
         services.AddSingleton<IModelProviderResolver, ModelProviderResolver>();
         services.AddSingleton<IAuthFlowService, AuthFlowService>();
         services.AddSingleton<IProviderCatalogService, ProviderCatalogService>();
+        services.AddSingleton<IProviderCredentialStore, Services.ProviderCredentialStore>();
 
         services.AddSingleton<IModelProvider>(serviceProvider =>
             WrapWithResilience(serviceProvider, serviceProvider.GetRequiredService<AnthropicProvider>()));

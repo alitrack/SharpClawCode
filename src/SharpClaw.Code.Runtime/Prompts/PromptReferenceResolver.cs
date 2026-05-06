@@ -20,6 +20,17 @@ public sealed partial class PromptReferenceResolver(
     IPermissionPolicyEngine permissionPolicyEngine,
     IRuntimeHostContextAccessor? hostContextAccessor = null) : IPromptReferenceResolver
 {
+    private const int MaxDirectoryReferenceFiles = 20;
+    private const int MaxDirectoryReferenceBytes = 200 * 1024;
+    private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".png", ".jpg", ".jpeg", ".gif", ".webp"
+    };
+    private static readonly HashSet<string> BinaryExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".zip", ".gz", ".tar", ".dll", ".exe", ".so", ".dylib", ".bin"
+    };
+
     /// <inheritdoc />
     public async Task<PromptReferenceResolution> ResolveAsync(
         string workspaceRoot,
@@ -45,6 +56,7 @@ public sealed partial class PromptReferenceResolver(
         var workDirFull = pathService.GetCanonicalFullPath(workingDirectory);
         var refs = new List<PromptReference>();
         var expanded = new StringBuilder(original);
+        var structuredContent = new List<ContentBlock>();
 
         foreach (var match in matches.OrderByDescending(m => m.Index))
         {
@@ -78,34 +90,28 @@ public sealed partial class PromptReferenceResolver(
                     cancellationToken).ConfigureAwait(false);
             }
 
-            var text = await fileSystem.ReadAllTextIfExistsAsync(resolvedFull, cancellationToken).ConfigureAwait(false);
-            if (text is null)
-            {
-                throw new InvalidOperationException($"Referenced path is missing or unreadable: '{resolvedFull}'.");
-            }
-
             var display = ToDisplayPath(workspaceFull, workDirFull, resolvedFull);
-            var block =
-                $"[Referenced file: {display}]" + Environment.NewLine
-                + text
-                + Environment.NewLine
-                + $"[End referenced file: {display}]";
+            var (block, promptReference, extraContent) = await ResolveReferenceAsync(
+                    resolvedFull,
+                    display,
+                    rawToken,
+                    pathPart,
+                    outside,
+                    cancellationToken)
+                .ConfigureAwait(false);
 
             expanded.Remove(match.Index, match.Length);
             expanded.Insert(match.Index, block);
-
-            refs.Add(new PromptReference(
-                Kind: PromptReferenceKind.File,
-                OriginalToken: rawToken,
-                RequestedPath: pathPart,
-                ResolvedFullPath: resolvedFull,
-                DisplayPath: display,
-                WasOutsideWorkspace: outside,
-                IncludedContent: text));
+            refs.Add(promptReference);
+            if (extraContent is not null)
+            {
+                structuredContent.Add(extraContent);
+            }
         }
 
         refs.Reverse();
-        return new PromptReferenceResolution(original, expanded.ToString(), refs);
+        structuredContent.Reverse();
+        return new PromptReferenceResolution(original, expanded.ToString(), refs, structuredContent);
     }
 
     private async Task EnsureOutsideWorkspaceAllowedAsync(
@@ -196,6 +202,172 @@ public sealed partial class PromptReferenceResolver(
 
         return fullPath;
     }
+
+    private async Task<(string ExpandedText, PromptReference Reference, ContentBlock? StructuredContent)> ResolveReferenceAsync(
+        string resolvedFull,
+        string display,
+        string rawToken,
+        string pathPart,
+        bool outsideWorkspace,
+        CancellationToken cancellationToken)
+    {
+        if (Directory.Exists(resolvedFull))
+        {
+            var (rendered, count) = await RenderDirectoryReferenceAsync(resolvedFull, display, cancellationToken).ConfigureAwait(false);
+            return (
+                rendered,
+                new PromptReference(
+                    PromptReferenceKind.Directory,
+                    rawToken,
+                    pathPart,
+                    resolvedFull,
+                    display,
+                    outsideWorkspace,
+                    rendered,
+                    IncludedEntryCount: count),
+                null);
+        }
+
+        if (ImageExtensions.Contains(Path.GetExtension(resolvedFull)))
+        {
+            var bytes = await File.ReadAllBytesAsync(resolvedFull, cancellationToken).ConfigureAwait(false);
+            var mediaType = ResolveMediaType(resolvedFull);
+            var placeholder =
+                $"[Referenced image: {display} ({mediaType})]" + Environment.NewLine
+                + $"[End referenced image: {display}]";
+            return (
+                placeholder,
+                new PromptReference(
+                    PromptReferenceKind.Image,
+                    rawToken,
+                    pathPart,
+                    resolvedFull,
+                    display,
+                    outsideWorkspace,
+                    placeholder,
+                    MediaType: mediaType,
+                    IncludedEntryCount: 1),
+                new ContentBlock(
+                    ContentBlockKind.Image,
+                    Text: display,
+                    ToolUseId: null,
+                    ToolName: null,
+                    ToolInputJson: null,
+                    IsError: null,
+                    MediaType: mediaType,
+                    Data: Convert.ToBase64String(bytes),
+                    Uri: resolvedFull));
+        }
+
+        var text = await fileSystem.ReadAllTextIfExistsAsync(resolvedFull, cancellationToken).ConfigureAwait(false);
+        if (text is null)
+        {
+            throw new InvalidOperationException($"Referenced path is missing or unreadable: '{resolvedFull}'.");
+        }
+
+        return (
+            $"[Referenced file: {display}]" + Environment.NewLine
+            + text
+            + Environment.NewLine
+            + $"[End referenced file: {display}]",
+            new PromptReference(
+                PromptReferenceKind.File,
+                rawToken,
+                pathPart,
+                resolvedFull,
+                display,
+                outsideWorkspace,
+                text,
+                IncludedEntryCount: 1),
+            null);
+    }
+
+    private static async Task<(string Rendered, int FileCount)> RenderDirectoryReferenceAsync(
+        string directoryPath,
+        string display,
+        CancellationToken cancellationToken)
+    {
+        var files = Directory.EnumerateFiles(directoryPath, "*", SearchOption.AllDirectories)
+            .Where(static path => !ShouldSkipPath(path))
+            .OrderBy(static path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var included = new List<(string RelativePath, string Content)>();
+        var totalBytes = 0;
+        foreach (var file in files)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (included.Count >= MaxDirectoryReferenceFiles)
+            {
+                break;
+            }
+
+            if (BinaryExtensions.Contains(Path.GetExtension(file)))
+            {
+                continue;
+            }
+
+            string text;
+            try
+            {
+                text = await File.ReadAllTextAsync(file, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                continue;
+            }
+
+            if (text.IndexOf('\0') >= 0)
+            {
+                continue;
+            }
+
+            var bytes = Encoding.UTF8.GetByteCount(text);
+            if (totalBytes + bytes > MaxDirectoryReferenceBytes)
+            {
+                break;
+            }
+
+            totalBytes += bytes;
+            included.Add((Path.GetRelativePath(directoryPath, file).Replace(Path.DirectorySeparatorChar, '/'), text));
+        }
+
+        var builder = new StringBuilder();
+        builder.Append("[Referenced directory: ").Append(display).AppendLine("]");
+        builder.AppendLine("Manifest:");
+        foreach (var entry in included)
+        {
+            builder.Append("- ").AppendLine(entry.RelativePath);
+        }
+
+        foreach (var entry in included)
+        {
+            builder.AppendLine()
+                .Append("[Referenced file: ")
+                .Append(entry.RelativePath)
+                .AppendLine("]")
+                .AppendLine(entry.Content)
+                .Append("[End referenced file: ")
+                .Append(entry.RelativePath)
+                .AppendLine("]");
+        }
+
+        builder.Append("[End referenced directory: ").Append(display).Append(']');
+        return (builder.ToString(), included.Count);
+    }
+
+    private static bool ShouldSkipPath(string path)
+        => path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Any(static segment => segment is ".git" or ".sharpclaw" or "bin" or "obj");
+
+    private static string ResolveMediaType(string path)
+        => Path.GetExtension(path).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            _ => "image/jpeg",
+        };
 
     [GeneratedRegex(@"@([^\s<>""|*?]+)", RegexOptions.CultureInvariant)]
     private static partial Regex AtPathRegex();

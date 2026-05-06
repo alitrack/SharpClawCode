@@ -11,7 +11,9 @@ namespace SharpClaw.Code.Runtime.Context;
 /// Prior turn messages assembled from session events, ready to be prepended to the
 /// provider request. May be empty for a brand-new session.
 /// </param>
+/// <param name="UserContent">Optional structured user content blocks for the current turn.</param>
 public sealed record PromptExecutionContext(
     string Prompt,
     IReadOnlyDictionary<string, string> Metadata,
-    IReadOnlyList<ChatMessage>? ConversationHistory = null);
+    IReadOnlyList<ChatMessage>? ConversationHistory = null,
+    IReadOnlyList<ContentBlock>? UserContent = null);

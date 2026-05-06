@@ -36,6 +36,9 @@ public sealed class ProviderCatalogService(
                 : true;
             var supportsEmbeddings = string.Equals(provider.ProviderName, openAiOptions.Value.ProviderName, StringComparison.OrdinalIgnoreCase)
                 && (openAiOptions.Value.SupportsEmbeddings || !string.IsNullOrWhiteSpace(openAiOptions.Value.DefaultEmbeddingModel));
+            var supportsImageInput = string.Equals(provider.ProviderName, anthropicOptions.Value.ProviderName, StringComparison.OrdinalIgnoreCase)
+                ? anthropicOptions.Value.SupportsImageInput
+                : openAiOptions.Value.SupportsImageInput;
             var localProfiles = string.Equals(provider.ProviderName, openAiOptions.Value.ProviderName, StringComparison.OrdinalIgnoreCase)
                 ? await BuildLocalRuntimeProfilesAsync(cancellationToken).ConfigureAwait(false)
                 : [];
@@ -52,6 +55,7 @@ public sealed class ProviderCatalogService(
                 AuthStatus: auth,
                 SupportsToolCalls: supportsToolCalls,
                 SupportsEmbeddings: supportsEmbeddings,
+                SupportsImageInput: supportsImageInput,
                 AvailableModels: availableModels,
                 LocalRuntimeProfiles: localProfiles));
         }

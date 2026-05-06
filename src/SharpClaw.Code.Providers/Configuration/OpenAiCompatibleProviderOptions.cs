@@ -48,6 +48,11 @@ public sealed class OpenAiCompatibleProviderOptions
     public bool SupportsEmbeddings { get; set; }
 
     /// <summary>
+    /// Gets or sets whether the endpoint supports structured image input.
+    /// </summary>
+    public bool SupportsImageInput { get; set; } = true;
+
+    /// <summary>
     /// Gets the configured named local runtime profiles.
     /// </summary>
     public Dictionary<string, LocalRuntimeProfileOptions> LocalRuntimes { get; } = new(StringComparer.OrdinalIgnoreCase);

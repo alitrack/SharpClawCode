@@ -18,6 +18,7 @@ namespace SharpClaw.Code.Protocol.Commands;
 /// <param name="IsInteractive">Whether the caller can participate in approval prompts.</param>
 /// <param name="HostContext">Optional embedded host and tenant context.</param>
 /// <param name="ApprovalSettings">Optional per-session auto-approval settings.</param>
+/// <param name="UserContent">Optional structured user content blocks that supplement or replace plain-text prompt content.</param>
 public sealed record RunPromptRequest(
     string Prompt,
     string? SessionId,
@@ -30,4 +31,5 @@ public sealed record RunPromptRequest(
     DelegatedTaskContract? DelegatedTask = null,
     bool IsInteractive = true,
     RuntimeHostContext? HostContext = null,
-    ApprovalSettings? ApprovalSettings = null);
+    ApprovalSettings? ApprovalSettings = null,
+    IReadOnlyList<ContentBlock>? UserContent = null);

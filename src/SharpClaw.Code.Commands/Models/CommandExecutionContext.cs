@@ -32,18 +32,20 @@ public sealed record CommandExecutionContext(
     /// </summary>
     /// <param name="isInteractive">Whether the current caller can participate in approval prompts.</param>
     /// <param name="primaryModeOverride">Optional primary-mode override.</param>
+    /// <param name="permissionModeOverride">Optional permission-mode override.</param>
     /// <param name="agentIdOverride">Optional agent id override.</param>
     /// <param name="approvalSettingsOverride">Optional bounded auto-approval override.</param>
     /// <returns>The runtime command context.</returns>
     public RuntimeCommandContext ToRuntimeCommandContext(
         bool isInteractive = true,
         PrimaryMode? primaryModeOverride = null,
+        PermissionMode? permissionModeOverride = null,
         string? agentIdOverride = null,
         ApprovalSettings? approvalSettingsOverride = null)
         => new(
             WorkingDirectory,
             Model,
-            PermissionMode,
+            permissionModeOverride ?? PermissionMode,
             OutputFormat,
             primaryModeOverride ?? PrimaryMode,
             SessionId,

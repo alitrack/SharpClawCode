@@ -23,6 +23,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IProcessRunner, ProcessRunner>();
         services.AddSingleton<IShellExecutor, ShellExecutor>();
         services.AddSingleton<IUserProfilePaths, UserProfilePaths>();
+        services.AddSingleton<ISecretProtector, PlatformSecretProtector>();
         services.AddSingleton<IRuntimeHostContextAccessor, RuntimeHostContextAccessor>();
         services.AddSingleton<IRuntimeStoragePathResolver, RuntimeStoragePathResolver>();
         services.AddSingleton<IExternalEditorService, ExternalEditorService>();

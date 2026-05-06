@@ -63,7 +63,7 @@ public sealed class GlobalCliOptions
 
         PrimaryModeOption = new Option<string>("--primary-mode")
         {
-            Description = "Sets the primary workflow mode: build, plan, or spec.",
+            Description = "Sets the primary workflow mode: build, plan, spec, or research.",
             DefaultValueFactory = _ => "build",
             Recursive = true
         };
@@ -280,6 +280,7 @@ public sealed class GlobalCliOptions
         {
             "plan" => PrimaryMode.Plan,
             "spec" => PrimaryMode.Spec,
+            "research" => PrimaryMode.Research,
             _ => PrimaryMode.Build,
         };
 

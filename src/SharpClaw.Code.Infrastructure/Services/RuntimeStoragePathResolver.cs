@@ -98,6 +98,22 @@ public sealed class RuntimeStoragePathResolver(
         => pathService.Combine(GetSharpClawRoot(workspacePath), "telemetry");
 
     /// <inheritdoc />
+    public string GetScheduledPromptsPath(string workspacePath)
+        => pathService.Combine(GetSharpClawRoot(workspacePath), "scheduled-prompts.json");
+
+    /// <inheritdoc />
+    public string GetScheduledPromptsLockPath(string workspacePath)
+        => pathService.Combine(GetSharpClawRoot(workspacePath), ".scheduled-prompts.lock");
+
+    /// <inheritdoc />
+    public string GetEvolutionProposalsPath(string workspacePath)
+        => pathService.Combine(GetSharpClawRoot(workspacePath), "evolution-proposals.json");
+
+    /// <inheritdoc />
+    public string GetEvolutionProposalsLockPath(string workspacePath)
+        => pathService.Combine(GetSharpClawRoot(workspacePath), ".evolution-proposals.lock");
+
+    /// <inheritdoc />
     public string GetUsageMeteringDatabasePath(string workspacePath)
         => pathService.Combine(GetTelemetryRoot(workspacePath), "usage-metering.db");
 

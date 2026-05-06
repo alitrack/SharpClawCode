@@ -54,7 +54,8 @@ public sealed class ProviderBackedAgentKernel(
             SystemPrompt: request.Instructions,
             OutputFormat: request.Context.OutputFormat,
             Temperature: 0.1m,
-            Metadata: baseMetadata));
+            Metadata: baseMetadata,
+            ContainsImageInput: request.Context.UserContent?.Any(static block => block.Kind == ContentBlockKind.Image) == true));
 
         var resolvedProviderName = resolvedRequest.ProviderName;
 
@@ -108,6 +109,16 @@ public sealed class ProviderBackedAgentKernel(
                 throw CreateMissingProviderException(resolvedProviderName, requestedModel, "provider resolution");
             }
 
+            if (request.Context.UserContent?.Any(static block => block.Kind == ContentBlockKind.Image) == true
+                && !provider.SupportsImageInput)
+            {
+                throw new ProviderExecutionException(
+                    resolvedProviderName,
+                    requestedModel,
+                    ProviderFailureKind.StreamFailed,
+                    $"Provider '{resolvedProviderName}' does not support structured image input.");
+            }
+
             // --- Build initial conversation messages ---
             // Do not add request.Instructions as a shared "system" chat message here.
             // Provider adapters apply system instructions via ProviderRequest.SystemPrompt
@@ -121,7 +132,11 @@ public sealed class ProviderBackedAgentKernel(
                 messages.AddRange(history);
             }
 
-            messages.Add(new ChatMessage("user", [new ContentBlock(ContentBlockKind.Text, request.Context.Prompt, null, null, null, null)]));
+            messages.Add(new ChatMessage(
+                "user",
+                request.Context.UserContent?.Count > 0
+                    ? request.Context.UserContent
+                    : [new ContentBlock(ContentBlockKind.Text, request.Context.Prompt, null, null, null, null)]));
 
             // --- Tool-calling loop ---
             var allProviderEvents = new List<ProviderEvent>();
@@ -149,7 +164,8 @@ public sealed class ProviderBackedAgentKernel(
                     Metadata: baseMetadata,
                     Messages: messages,
                     Tools: availableTools,
-                    MaxTokens: options.MaxTokensPerRequest));
+                    MaxTokens: options.MaxTokensPerRequest,
+                    ContainsImageInput: messages.Any(static message => message.Content.Any(static block => block.Kind == ContentBlockKind.Image))));
 
                 lastProviderRequest = providerRequest;
 

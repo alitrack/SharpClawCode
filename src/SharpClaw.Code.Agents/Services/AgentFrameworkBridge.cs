@@ -32,6 +32,9 @@ public sealed class AgentFrameworkBridge(
     {
         ArgumentNullException.ThrowIfNull(request);
         var allowedTools = ResolveAllowedTools(request.Context.Metadata);
+        var trustedPluginNames = ResolveTrustedNames(request.Context.Metadata, SharpClawWorkflowMetadataKeys.TrustedPluginNamesJson);
+        var trustedMcpServerNames = ResolveTrustedNames(request.Context.Metadata, SharpClawWorkflowMetadataKeys.TrustedMcpServerNamesJson);
+        var effectivePermissionMode = ResolvePermissionMode(request.Context.Metadata, request.Context.PermissionMode);
 
         // Build tool execution context from agent run context
         var toolExecutionContext = new ToolExecutionContext(
@@ -39,7 +42,7 @@ public sealed class AgentFrameworkBridge(
             TurnId: request.Context.TurnId,
             WorkspaceRoot: request.Context.WorkingDirectory,
             WorkingDirectory: request.Context.WorkingDirectory,
-            PermissionMode: request.Context.PermissionMode,
+            PermissionMode: effectivePermissionMode,
             OutputFormat: request.Context.OutputFormat,
             EnvironmentVariables: null,
             Model: request.Context.Model,
@@ -54,8 +57,8 @@ public sealed class AgentFrameworkBridge(
                 && string.Equals(acp, "true", StringComparison.OrdinalIgnoreCase)
                 ? "acp"
                 : null,
-            TrustedPluginNames: null,
-            TrustedMcpServerNames: null,
+            TrustedPluginNames: trustedPluginNames,
+            TrustedMcpServerNames: trustedMcpServerNames,
             PrimaryMode: request.Context.PrimaryMode,
             MutationRecorder: request.Context.ToolMutationRecorder,
             ApprovalSettings: request.Context.ApprovalSettings);
@@ -166,6 +169,41 @@ public sealed class AgentFrameworkBridge(
         {
             return null;
         }
+    }
+
+    private static IReadOnlyCollection<string>? ResolveTrustedNames(
+        IReadOnlyDictionary<string, string>? metadata,
+        string metadataKey)
+    {
+        if (metadata is null
+            || !metadata.TryGetValue(metadataKey, out var payload)
+            || string.IsNullOrWhiteSpace(payload))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize(payload, ProtocolJsonContext.Default.StringArray);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static PermissionMode ResolvePermissionMode(
+        IReadOnlyDictionary<string, string>? metadata,
+        PermissionMode fallback)
+    {
+        if (metadata is not null
+            && metadata.TryGetValue(SharpClawWorkflowMetadataKeys.PreferredPermissionMode, out var payload)
+            && Enum.TryParse<PermissionMode>(payload, ignoreCase: true, out var parsed))
+        {
+            return parsed;
+        }
+
+        return fallback;
     }
 
     private static IEnumerable<ToolDefinition> FilterAdvertisedTools(
