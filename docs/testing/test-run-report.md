@@ -1,6 +1,6 @@
 # Agent Testing Run Report
 
-Generated: `2026-05-10T05:59:56.0495010+00:00`
+Generated: `2026-05-10T06:07:15.3869410+00:00`
 Gate status: **PASS**
 
 ## Gates
@@ -17,10 +17,10 @@ Gate status: **PASS**
 
 | Scenario | Risk | Status | Trace |
 |----------|------|--------|-------|
-| approval-required | High | PASS | ../../artifacts/testing/traces/approval-required-090deedfc1c04db4abda800f84f29bf2.trace.json |
-| basic-tool-call | Low | PASS | ../../artifacts/testing/traces/basic-tool-call-bcb5823a36b24b4ea6d0f665b3707164.trace.json |
-| timeout-retry-placeholder | Medium | PASS | ../../artifacts/testing/traces/timeout-retry-placeholder-b0404d48e66a4a32b5d1aa13eb9517d1.trace.json |
-| unsafe-tool-blocked | Critical | PASS | ../../artifacts/testing/traces/unsafe-tool-blocked-3bd2cf6dda5d4d0a855d8acf7f83738a.trace.json |
+| approval-required | High | PASS | ../../artifacts/testing/traces/approval-required-d92e073423fa46d6b7642445703ba21b.trace.json |
+| basic-tool-call | Low | PASS | ../../artifacts/testing/traces/basic-tool-call-85bf00b5ce654f178528a604baa0d360.trace.json |
+| timeout-retry-placeholder | Medium | PASS | ../../artifacts/testing/traces/timeout-retry-placeholder-ef372e2a92834b63b9070d10f0c1628f.trace.json |
+| unsafe-tool-blocked | Critical | PASS | ../../artifacts/testing/traces/unsafe-tool-blocked-a6cea282048e4622bfc7ea02b2d664f1.trace.json |
 
 ## Oracle Results
 

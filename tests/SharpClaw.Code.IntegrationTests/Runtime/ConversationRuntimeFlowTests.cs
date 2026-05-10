@@ -191,13 +191,12 @@ public sealed class ConversationRuntimeFlowTests
     {
         using var cts = new CancellationTokenSource();
         var runTask = runtime.RunPromptAsync(request, cts.Token);
-        await WaitForActiveTurnAsync(runtime, runTask, workspacePath, CancellationToken.None).ConfigureAwait(false);
+        await WaitForActiveTurnAsync(runTask, workspacePath, CancellationToken.None).ConfigureAwait(false);
         cts.CancelAfter(cancelAfter);
         await runTask.ConfigureAwait(false);
     }
 
     private static async Task WaitForActiveTurnAsync(
-        IConversationRuntime runtime,
         Task runTask,
         string workspacePath,
         CancellationToken cancellationToken)
@@ -211,8 +210,7 @@ public sealed class ConversationRuntimeFlowTests
                 throw new TimeoutException("The runtime completed before an active turn could be observed.");
             }
 
-            var latestSession = await runtime.GetLatestSessionAsync(workspacePath, cancellationToken).ConfigureAwait(false);
-            if (!string.IsNullOrWhiteSpace(latestSession?.ActiveTurnId))
+            if (await HasTurnStartedEventAsync(workspacePath, cancellationToken).ConfigureAwait(false))
             {
                 return;
             }
@@ -221,6 +219,35 @@ public sealed class ConversationRuntimeFlowTests
         }
 
         throw new TimeoutException("The runtime did not activate a turn before cancellation was requested.");
+    }
+
+    private static async Task<bool> HasTurnStartedEventAsync(string workspacePath, CancellationToken cancellationToken)
+    {
+        var sessionsRoot = Path.Combine(workspacePath, ".sharpclaw", "sessions");
+        if (!Directory.Exists(sessionsRoot))
+        {
+            return false;
+        }
+
+        foreach (var eventLogPath in Directory.EnumerateFiles(sessionsRoot, "events.ndjson", SearchOption.AllDirectories))
+        {
+            try
+            {
+                await using var stream = new FileStream(eventLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var reader = new StreamReader(stream);
+                var content = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                if (content.Contains("\"$eventType\":\"turnStarted\"", StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+            catch (IOException)
+            {
+                // The runtime may be appending the event concurrently; retry on the next poll.
+            }
+        }
+
+        return false;
     }
 
     private static string CreateTemporaryWorkspace()
