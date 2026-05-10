@@ -79,7 +79,7 @@ public sealed class ModelsCommandHandler(
             return ExecuteUseAsync(command.Arguments[1], context, cancellationToken);
         }
 
-        return RenderAsync("Usage: /models [list|show|use <provider/model|alias>|clear]", context, false, cancellationToken);
+        return RenderAsync("Usage: /models [list|show|use <provider/model|alias>|clear]", context, cancellationToken, success: false);
     }
 
     private async Task<int> ExecuteListAsync(CommandExecutionContext context, CancellationToken cancellationToken)
@@ -159,4 +159,7 @@ public sealed class ModelsCommandHandler(
         await outputRendererDispatcher.RenderCommandResultAsync(result, context.OutputFormat, cancellationToken).ConfigureAwait(false);
         return result.ExitCode;
     }
+
+    private Task<int> RenderAsync(string message, CommandExecutionContext context, CancellationToken cancellationToken, bool success = true)
+        => RenderAsync(new CommandResult(success, success ? 0 : 1, context.OutputFormat, message, null), context, cancellationToken);
 }

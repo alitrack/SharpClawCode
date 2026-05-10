@@ -49,7 +49,7 @@ public sealed partial class PromptReferenceResolver(
         var matches = AtPathRegex().Matches(original).Cast<Match>().OrderByDescending(m => m.Index).ToArray();
         if (matches.Length == 0)
         {
-            return new PromptReferenceResolution(original, original, []);
+            return new PromptReferenceResolution(original, original, [], []);
         }
 
         var workspaceFull = pathService.GetCanonicalFullPath(workspaceRoot);

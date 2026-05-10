@@ -19,6 +19,7 @@
     <ProjectReference Include="..\SharpClaw.Code.Commands\SharpClaw.Code.Commands.csproj" />
     <ProjectReference Include="..\SharpClaw.Code.Runtime\SharpClaw.Code.Runtime.csproj" />
     <ProjectReference Include="..\SharpClaw.Code.Infrastructure\SharpClaw.Code.Infrastructure.csproj" />
+    <ProjectReference Include="..\SharpClaw.Testing.Cli\SharpClaw.Testing.Cli.csproj" />
   </ItemGroup>
 
 </Project>

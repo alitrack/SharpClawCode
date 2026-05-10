@@ -92,7 +92,7 @@ public sealed class FeatureCommandHandlersTests
     public async Task Models_command_should_render_provider_catalog_payload()
     {
         var renderer = new RecordingRenderer();
-        var handler = new ModelsCommandHandler(new StubProviderCatalogService(), new OutputRendererDispatcher([renderer]));
+        var handler = new ModelsCommandHandler(new StubProviderCatalogService(), new StubSessionPreferenceService(), new OutputRendererDispatcher([renderer]));
         var context = new CommandExecutionContext("/workspace", null, PermissionMode.WorkspaceWrite, OutputFormat.Json, PrimaryMode.Build);
 
         var exitCode = await handler.ExecuteAsync(new SlashCommandParseResult(true, "models", []), context, CancellationToken.None);
@@ -335,6 +335,55 @@ public sealed class FeatureCommandHandlersTests
                             [])
                     ])
             ]);
+    }
+
+    private sealed class StubSessionPreferenceService : ISessionPreferenceService
+    {
+        public Task<PermissionStatusReport> GetPermissionStatusAsync(
+            string workspaceRoot,
+            string? sessionId,
+            PermissionMode fallbackPermissionMode,
+            ApprovalSettings? approvalSettings,
+            string? currentModel,
+            CancellationToken cancellationToken)
+            => Task.FromResult(new PermissionStatusReport(fallbackPermissionMode, approvalSettings, [], sessionId, currentModel));
+
+        public Task<PermissionStatusReport> GrantTrustAsync(
+            string workspaceRoot,
+            string? sessionId,
+            TrustedSourceKind kind,
+            string name,
+            PermissionMode fallbackPermissionMode,
+            ApprovalSettings? approvalSettings,
+            string? currentModel,
+            CancellationToken cancellationToken)
+            => GetPermissionStatusAsync(workspaceRoot, sessionId, fallbackPermissionMode, approvalSettings, currentModel, cancellationToken);
+
+        public Task<PermissionStatusReport> RevokeTrustAsync(
+            string workspaceRoot,
+            string? sessionId,
+            TrustedSourceKind kind,
+            string name,
+            PermissionMode fallbackPermissionMode,
+            ApprovalSettings? approvalSettings,
+            string? currentModel,
+            CancellationToken cancellationToken)
+            => GetPermissionStatusAsync(workspaceRoot, sessionId, fallbackPermissionMode, approvalSettings, currentModel, cancellationToken);
+
+        public Task<SessionModelPreference> SetModelPreferenceAsync(string workspaceRoot, string? sessionId, string model, CancellationToken cancellationToken)
+            => Task.FromResult(new SessionModelPreference(model, DateTimeOffset.UtcNow));
+
+        public Task<bool> ClearModelPreferenceAsync(string workspaceRoot, string? sessionId, CancellationToken cancellationToken)
+            => Task.FromResult(true);
+
+        public Task<PermissionMode> SetPreferredPermissionModeAsync(string workspaceRoot, string? sessionId, PermissionMode permissionMode, CancellationToken cancellationToken)
+            => Task.FromResult(permissionMode);
+
+        public Task<ApprovalSettings> SetApprovalSettingsAsync(string workspaceRoot, string? sessionId, ApprovalSettings approvalSettings, CancellationToken cancellationToken)
+            => Task.FromResult(approvalSettings);
+
+        public Task<bool> ClearApprovalSettingsAsync(string workspaceRoot, string? sessionId, CancellationToken cancellationToken)
+            => Task.FromResult(true);
     }
 
     private sealed class StubWorkspaceIndexService : IWorkspaceIndexService

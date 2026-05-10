@@ -36,6 +36,9 @@ internal sealed class ResilientProviderDecorator : IModelProvider
     public string ProviderName => _inner.ProviderName;
 
     /// <inheritdoc />
+    public bool SupportsImageInput => _inner.SupportsImageInput;
+
+    /// <inheritdoc />
     public Task<AuthStatus> GetAuthStatusAsync(CancellationToken cancellationToken)
         => _inner.GetAuthStatusAsync(cancellationToken);
 

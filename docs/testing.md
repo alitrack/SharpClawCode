@@ -8,11 +8,19 @@
 | **SharpClaw.Code.IntegrationTests** | Runtime + provider flows with real composition |
 | **SharpClaw.Code.MockProvider** | **`DeterministicMockModelProvider`**, **`AddDeterministicMockModelProvider`**, **`ParityMetadataKeys`**, **`ParityProviderScenario`** |
 | **SharpClaw.Code.ParityHarness** | End-to-end scenarios over real **`AddSharpClawRuntime`** + mock LLM |
+| **SharpClaw.Testing.\*** | JSON scenario contracts, oracle runner, CLI commands, and xUnit adapter for explicit agent testing |
 
 Run all tests:
 
 ```bash
 dotnet test SharpClawCode.sln
+```
+
+Run the explicit agent scenario harness:
+
+```bash
+dotnet run --project src/SharpClaw.Code.Cli/SharpClaw.Code.Cli.csproj -- test run
+dotnet run --project src/SharpClaw.Code.Cli/SharpClaw.Code.Cli.csproj -- test gates
 ```
 
 Build the example hosts as part of normal validation:
@@ -59,6 +67,10 @@ Stable scenario **ids** are listed in **`ParityScenarioIds`** (e.g. `streaming_t
 
 **Note:** Many scenarios exercise **`IToolExecutor`** directly rather than going through the LLM agent loop (which matches current **`AgentFrameworkBridge`** behavior).
 
+## Agent scenario harness
+
+The scenario harness lives in **`SharpClaw.Testing.Abstractions`**, **`SharpClaw.Testing.Harness`**, **`SharpClaw.Testing.Cli`**, and **`SharpClaw.Testing.Xunit`**. Scenario files live in **`tests/agent-scenarios`** and use JSON with explicit oracles. See **`docs/testing/agent-testing-harness.md`** for the contract, CLI usage, xUnit adapter, and gate model.
+
 ## CI
 
-CI restores and builds the full solution, explicitly builds every example host project, and then runs `dotnet test` on the solution. Parity tests use temp directories under **`Path.GetTempPath()`** and avoid network.
+CI restores and builds the full solution, explicitly builds every example host project, runs `dotnet test`, then runs the explicit agent scenario harness through `sharpclaw test run` and `sharpclaw test gates`. Parity tests use temp directories under **`Path.GetTempPath()`** and avoid network.

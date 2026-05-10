@@ -35,4 +35,5 @@ public sealed record PromptReference(
 public sealed record PromptReferenceResolution(
     string OriginalPrompt,
     string ExpandedPrompt,
-    List<PromptReference> References);
+    List<PromptReference> References,
+    IReadOnlyList<ContentBlock> StructuredContent);

@@ -1,0 +1,50 @@
+{
+  "id": "basic-tool-call",
+  "name": "Basic tool call scenario",
+  "description": "Verifies that a scripted agent trace calls read_file once and uses the result in the final answer.",
+  "risk": "Low",
+  "tags": [
+    "tools",
+    "trace"
+  ],
+  "input": {
+    "prompt": "Read the project README and summarize the first line.",
+    "executor": "scripted",
+    "scriptedTrace": [
+      {
+        "kind": "ToolCall",
+        "toolCall": {
+          "callId": "call-readme",
+          "toolName": "read_file",
+          "argumentsJson": "{\"path\":\"README.md\"}"
+        }
+      },
+      {
+        "kind": "ToolResult",
+        "toolResult": {
+          "callId": "call-readme",
+          "toolName": "read_file",
+          "succeeded": true,
+          "output": "SharpClaw Code"
+        }
+      }
+    ],
+    "scriptedFinalAnswer": "README starts with SharpClaw Code."
+  },
+  "expected": {
+    "oracles": [
+      {
+        "type": "ToolCalled",
+        "toolName": "read_file"
+      },
+      {
+        "type": "MaxToolCalls",
+        "maxCount": 1
+      },
+      {
+        "type": "FinalAnswerContains",
+        "text": "SharpClaw Code"
+      }
+    ]
+  }
+}

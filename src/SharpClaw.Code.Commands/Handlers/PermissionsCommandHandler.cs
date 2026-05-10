@@ -123,7 +123,7 @@ public sealed class PermissionsCommandHandler(
                 return ExecuteSetModeAsync(command.Arguments[2], context, cancellationToken);
             }
 
-            return RenderAsync("Usage: /permissions mode set <readOnly|workspaceWrite|dangerFullAccess>", context, false, cancellationToken);
+            return RenderAsync("Usage: /permissions mode set <readOnly|workspaceWrite|dangerFullAccess>", context, cancellationToken, success: false);
         }
 
         if (string.Equals(command.Arguments[0], "approvals", StringComparison.OrdinalIgnoreCase))
@@ -147,7 +147,7 @@ public sealed class PermissionsCommandHandler(
                 return ExecuteSetApprovalsAsync(command.Arguments[2], budget, context, cancellationToken);
             }
 
-            return RenderAsync("Usage: /permissions approvals [show|set <scopes> [budget]|clear]", context, false, cancellationToken);
+            return RenderAsync("Usage: /permissions approvals [show|set <scopes> [budget]|clear]", context, cancellationToken, success: false);
         }
 
         if (string.Equals(command.Arguments[0], "trust", StringComparison.OrdinalIgnoreCase))
@@ -169,10 +169,10 @@ public sealed class PermissionsCommandHandler(
                     cancellationToken);
             }
 
-            return RenderAsync("Usage: /permissions trust [list|grant <plugin|mcp> <name>|revoke <plugin|mcp> <name>]", context, false, cancellationToken);
+            return RenderAsync("Usage: /permissions trust [list|grant <plugin|mcp> <name>|revoke <plugin|mcp> <name>]", context, cancellationToken, success: false);
         }
 
-        return RenderAsync("Usage: /permissions [show|mode|approvals|trust]", context, false, cancellationToken);
+        return RenderAsync("Usage: /permissions [show|mode|approvals|trust]", context, cancellationToken, success: false);
     }
 
     private async Task<int> ExecuteShowAsync(CommandExecutionContext context, CancellationToken cancellationToken)

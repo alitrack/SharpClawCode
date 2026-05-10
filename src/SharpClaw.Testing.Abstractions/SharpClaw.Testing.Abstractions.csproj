@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Scenario and trace contracts for SharpClaw agent testing.</Description>
+  </PropertyGroup>
+
+</Project>

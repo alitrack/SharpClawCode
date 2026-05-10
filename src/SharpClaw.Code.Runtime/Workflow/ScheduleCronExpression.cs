@@ -69,7 +69,7 @@ internal static class ScheduleCronExpression
     {
         if (string.Equals(token, "*", StringComparison.Ordinal))
         {
-            return new CronField(null, null, isWildcard: true);
+            return new CronField(null, null, IsWildcard: true);
         }
 
         if (token.StartsWith("*/", StringComparison.Ordinal))
@@ -79,7 +79,7 @@ internal static class ScheduleCronExpression
                 throw new InvalidOperationException($"Invalid {fieldName} step expression '{token}'.");
             }
 
-            return new CronField(null, step, isWildcard: false);
+            return new CronField(null, step, IsWildcard: false);
         }
 
         if (!int.TryParse(token, out var value) || value < min || value > max)
@@ -87,7 +87,7 @@ internal static class ScheduleCronExpression
             throw new InvalidOperationException($"Invalid {fieldName} value '{token}'.");
         }
 
-        return new CronField(value, null, isWildcard: false);
+        return new CronField(value, null, IsWildcard: false);
     }
 
     private static bool Matches(CronField field, int value)

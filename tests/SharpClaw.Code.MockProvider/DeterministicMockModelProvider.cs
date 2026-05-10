@@ -26,6 +26,9 @@ public sealed class DeterministicMockModelProvider : IModelProvider
     public string ProviderName => ProviderNameConstant;
 
     /// <inheritdoc />
+    public bool SupportsImageInput => false;
+
+    /// <inheritdoc />
     public Task<AuthStatus> GetAuthStatusAsync(CancellationToken cancellationToken)
     {
         _ = cancellationToken;

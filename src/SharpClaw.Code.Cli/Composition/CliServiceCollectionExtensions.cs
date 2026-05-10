@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SharpClaw.Code.Acp;
 using SharpClaw.Code.Commands;
 using SharpClaw.Code.Commands.Options;
+using SharpClaw.Testing.Cli;
 
 namespace SharpClaw.Code.Cli.Composition;
 
@@ -18,6 +19,7 @@ public static class CliServiceCollectionExtensions
     public static IServiceCollection AddSharpClawCli(this IServiceCollection services)
     {
         services.AddSharpClawAcp();
+        services.AddSharpClawTestingCli();
         services.AddSingleton<GlobalCliOptions>();
         services.AddSingleton<ReplInteractionState>();
         services.AddSingleton<CliCommandFactory>();
@@ -36,12 +38,13 @@ public static class CliServiceCollectionExtensions
         services.AddSingleton<ResearchCommandHandler>();
         services.AddSingleton<ScheduleCommandHandler>();
         services.AddSingleton<EvolutionCommandHandler>();
+        services.AddSingleton<ModelsCommandHandler>();
         services.AddSingleton<ICommandHandler, PromptCommandHandler>();
         services.AddSingleton<ICommandHandler, StatusCommandHandler>();
         services.AddSingleton<ICommandHandler, DoctorCommandHandler>();
         services.AddSingleton<ICommandHandler>(serviceProvider => serviceProvider.GetRequiredService<SessionCommandHandler>());
         services.AddSingleton<ICommandHandler>(serviceProvider => serviceProvider.GetRequiredService<PermissionsCommandHandler>());
-        services.AddSingleton<ICommandHandler, ModelsCommandHandler>();
+        services.AddSingleton<ICommandHandler>(serviceProvider => serviceProvider.GetRequiredService<ModelsCommandHandler>());
         services.AddSingleton<ICommandHandler>(serviceProvider => serviceProvider.GetRequiredService<AuthCommandHandler>());
         services.AddSingleton<ICommandHandler>(serviceProvider => serviceProvider.GetRequiredService<InitCommandHandler>());
         services.AddSingleton<ICommandHandler>(serviceProvider => serviceProvider.GetRequiredService<ResearchCommandHandler>());
@@ -75,7 +78,7 @@ public static class CliServiceCollectionExtensions
         services.AddSingleton<ISlashCommandHandler>(serviceProvider => serviceProvider.GetRequiredService<SessionCommandHandler>());
         services.AddSingleton<ISlashCommandHandler, SessionsSlashCommandHandler>();
         services.AddSingleton<ISlashCommandHandler>(serviceProvider => serviceProvider.GetRequiredService<PermissionsCommandHandler>());
-        services.AddSingleton<ISlashCommandHandler, ModelsCommandHandler>();
+        services.AddSingleton<ISlashCommandHandler>(serviceProvider => serviceProvider.GetRequiredService<ModelsCommandHandler>());
         services.AddSingleton<ISlashCommandHandler, ModelSlashCommandHandler>();
         services.AddSingleton<ISlashCommandHandler>(serviceProvider => serviceProvider.GetRequiredService<AuthCommandHandler>());
         services.AddSingleton<ISlashCommandHandler>(serviceProvider => serviceProvider.GetRequiredService<InitCommandHandler>());

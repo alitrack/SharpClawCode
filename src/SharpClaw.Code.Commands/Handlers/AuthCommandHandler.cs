@@ -106,7 +106,7 @@ public sealed class AuthCommandHandler(
             return ExecuteSetKeyAsync(command.Arguments[1], null, false, context, cancellationToken);
         }
 
-        return RenderAsync("Usage: /auth [status [provider]|list|set-key <provider> [--env-var NAME|--stdin]|clear-key <provider>]", context, false, cancellationToken);
+        return RenderAsync("Usage: /auth [status [provider]|list|set-key <provider> [--env-var NAME|--stdin]|clear-key <provider>]", context, cancellationToken, success: false);
     }
 
     private async Task<int> ExecuteStatusAsync(CommandExecutionContext context, string? providerName, CancellationToken cancellationToken)
@@ -117,7 +117,7 @@ public sealed class AuthCommandHandler(
             : entries.Where(entry => string.Equals(entry.ProviderName, providerName, StringComparison.OrdinalIgnoreCase)).ToArray();
         if (filtered.Count == 0)
         {
-            return await RenderAsync($"No provider '{providerName}' was found.", context, false, cancellationToken).ConfigureAwait(false);
+            return await RenderAsync($"No provider '{providerName}' was found.", context, cancellationToken, success: false).ConfigureAwait(false);
         }
 
         await outputRendererDispatcher.RenderCommandResultAsync(
@@ -166,12 +166,12 @@ public sealed class AuthCommandHandler(
         }
         else
         {
-            return await RenderAsync("Provide --env-var, pass --stdin, or run interactively to enter a secret without exposing it on the command line.", context, false, cancellationToken).ConfigureAwait(false);
+            return await RenderAsync("Provide --env-var, pass --stdin, or run interactively to enter a secret without exposing it on the command line.", context, cancellationToken, success: false).ConfigureAwait(false);
         }
 
         if (string.IsNullOrWhiteSpace(secret))
         {
-            return await RenderAsync("No API key value was provided.", context, false, cancellationToken).ConfigureAwait(false);
+            return await RenderAsync("No API key value was provided.", context, cancellationToken, success: false).ConfigureAwait(false);
         }
 
         await providerCredentialStore.SetProtectedSecretAsync(providerName, secret, cancellationToken).ConfigureAwait(false);

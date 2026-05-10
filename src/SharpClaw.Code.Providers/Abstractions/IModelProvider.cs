@@ -16,7 +16,7 @@ public interface IModelProvider
     /// <summary>
     /// Gets whether the provider accepts structured image input.
     /// </summary>
-    bool SupportsImageInput { get; }
+    bool SupportsImageInput => false;
 
     /// <summary>
     /// Gets the current authentication status for the provider.

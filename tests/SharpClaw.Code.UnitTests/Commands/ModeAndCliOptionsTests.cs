@@ -6,6 +6,7 @@ using SharpClaw.Code.Commands.Options;
 using SharpClaw.Code.Protocol.Commands;
 using SharpClaw.Code.Protocol.Enums;
 using SharpClaw.Code.Protocol.Models;
+using SharpClaw.Code.Runtime.Abstractions;
 
 namespace SharpClaw.Code.UnitTests.Commands;
 
@@ -115,7 +116,8 @@ public sealed class ModeAndCliOptionsTests
     {
         var replState = new ReplInteractionState();
         var renderer = new StubOutputRenderer();
-        var handler = new ApprovalsSlashCommandHandler(replState, new OutputRendererDispatcher([renderer]));
+        var sessionPreferences = new StubSessionPreferenceService();
+        var handler = CreateApprovalsHandler(replState, renderer, sessionPreferences);
         var context = new CommandExecutionContext(
             WorkingDirectory: "/workspace",
             Model: null,
@@ -130,10 +132,10 @@ public sealed class ModeAndCliOptionsTests
             CancellationToken.None);
 
         exitCode.Should().Be(0);
-        replState.ApprovalSettingsOverride.Should().BeEquivalentTo(new ApprovalSettings(
+        sessionPreferences.LastApprovalSettings.Should().BeEquivalentTo(new ApprovalSettings(
             [ApprovalScope.ShellExecution, ApprovalScope.PromptOutsideWorkspaceRead],
             2));
-        renderer.LastCommandResult!.Message.Should().Contain("Auto-approval override set");
+        renderer.LastCommandResult!.Message.Should().Contain("Persisted session auto-approvals");
     }
 
     [Fact]
@@ -144,7 +146,8 @@ public sealed class ModeAndCliOptionsTests
             ApprovalSettingsOverride = new ApprovalSettings([ApprovalScope.ShellExecution], 1)
         };
         var renderer = new StubOutputRenderer();
-        var handler = new ApprovalsSlashCommandHandler(replState, new OutputRendererDispatcher([renderer]));
+        var sessionPreferences = new StubSessionPreferenceService();
+        var handler = CreateApprovalsHandler(replState, renderer, sessionPreferences);
         var context = new CommandExecutionContext(
             WorkingDirectory: "/workspace",
             Model: null,
@@ -160,7 +163,73 @@ public sealed class ModeAndCliOptionsTests
 
         exitCode.Should().Be(0);
         replState.ApprovalSettingsOverride.Should().BeNull();
-        renderer.LastCommandResult!.Message.Should().Contain("reset");
+        sessionPreferences.ClearApprovalSettingsCalled.Should().BeTrue();
+        renderer.LastCommandResult!.Message.Should().Contain("Cleared durable session auto-approval settings");
+    }
+
+    private static ApprovalsSlashCommandHandler CreateApprovalsHandler(
+        ReplInteractionState replState,
+        IOutputRenderer renderer,
+        ISessionPreferenceService sessionPreferences)
+        => new(new PermissionsCommandHandler(sessionPreferences, replState, new OutputRendererDispatcher([renderer])));
+
+    private sealed class StubSessionPreferenceService : ISessionPreferenceService
+    {
+        public ApprovalSettings? LastApprovalSettings { get; private set; }
+
+        public bool ClearApprovalSettingsCalled { get; private set; }
+
+        public Task<PermissionStatusReport> GetPermissionStatusAsync(
+            string workspaceRoot,
+            string? sessionId,
+            PermissionMode fallbackPermissionMode,
+            ApprovalSettings? approvalSettings,
+            string? currentModel,
+            CancellationToken cancellationToken)
+            => Task.FromResult(new PermissionStatusReport(fallbackPermissionMode, approvalSettings, [], sessionId, currentModel));
+
+        public Task<PermissionStatusReport> GrantTrustAsync(
+            string workspaceRoot,
+            string? sessionId,
+            TrustedSourceKind kind,
+            string name,
+            PermissionMode fallbackPermissionMode,
+            ApprovalSettings? approvalSettings,
+            string? currentModel,
+            CancellationToken cancellationToken)
+            => GetPermissionStatusAsync(workspaceRoot, sessionId, fallbackPermissionMode, approvalSettings, currentModel, cancellationToken);
+
+        public Task<PermissionStatusReport> RevokeTrustAsync(
+            string workspaceRoot,
+            string? sessionId,
+            TrustedSourceKind kind,
+            string name,
+            PermissionMode fallbackPermissionMode,
+            ApprovalSettings? approvalSettings,
+            string? currentModel,
+            CancellationToken cancellationToken)
+            => GetPermissionStatusAsync(workspaceRoot, sessionId, fallbackPermissionMode, approvalSettings, currentModel, cancellationToken);
+
+        public Task<SessionModelPreference> SetModelPreferenceAsync(string workspaceRoot, string? sessionId, string model, CancellationToken cancellationToken)
+            => Task.FromResult(new SessionModelPreference(model, DateTimeOffset.UtcNow));
+
+        public Task<bool> ClearModelPreferenceAsync(string workspaceRoot, string? sessionId, CancellationToken cancellationToken)
+            => Task.FromResult(true);
+
+        public Task<PermissionMode> SetPreferredPermissionModeAsync(string workspaceRoot, string? sessionId, PermissionMode permissionMode, CancellationToken cancellationToken)
+            => Task.FromResult(permissionMode);
+
+        public Task<ApprovalSettings> SetApprovalSettingsAsync(string workspaceRoot, string? sessionId, ApprovalSettings approvalSettings, CancellationToken cancellationToken)
+        {
+            LastApprovalSettings = approvalSettings;
+            return Task.FromResult(approvalSettings);
+        }
+
+        public Task<bool> ClearApprovalSettingsAsync(string workspaceRoot, string? sessionId, CancellationToken cancellationToken)
+        {
+            ClearApprovalSettingsCalled = true;
+            return Task.FromResult(true);
+        }
     }
 
     private sealed class StubOutputRenderer : IOutputRenderer
