@@ -1,5 +1,8 @@
+using System.Collections.Concurrent;
 using System.ClientModel;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -23,6 +26,7 @@ public sealed class OpenAiCompatibleProvider(
     ILogger<OpenAiCompatibleProvider> logger) : IModelProvider
 {
     private readonly OpenAiCompatibleProviderOptions _options = options.Value;
+    private readonly ConcurrentDictionary<OpenAiClientCacheKey, OpenAIClient> _clientCache = new();
     internal const string RuntimeProfileMetadataKey = "openai-compatible.profile";
 
     /// <inheritdoc />
@@ -62,7 +66,7 @@ public sealed class OpenAiCompatibleProvider(
         var modelId = Internal.ProviderHttpHelpers.ResolveModelOrDefault(
             request.Model,
             profile?.DefaultChatModel ?? _options.DefaultModel);
-        var openAiClient = CreateOpenAiClient(profile, resolvedApiKey);
+        var openAiClient = GetOrCreateOpenAiClient(profile, resolvedApiKey);
         var nativeClient = openAiClient.GetChatClient(modelId);
         using var chatClient = nativeClient.AsIChatClient();
 
@@ -95,19 +99,28 @@ public sealed class OpenAiCompatibleProvider(
         }
     }
 
-    private OpenAIClient CreateOpenAiClient(LocalRuntimeProfileOptions? profile, string? resolvedApiKey)
+    private OpenAIClient GetOrCreateOpenAiClient(LocalRuntimeProfileOptions? profile, string? resolvedApiKey)
     {
-        var openAiOptions = new OpenAIClientOptions();
         var normalized = Internal.ProviderHttpHelpers.NormalizeBaseUrl(profile?.BaseUrl ?? _options.BaseUrl);
-        if (normalized is not null)
-        {
-            openAiOptions.Endpoint = new Uri(normalized);
-        }
-
         var apiKey = profile?.ApiKey ?? resolvedApiKey ?? _options.ApiKey ?? "local-runtime";
-        var credential = new ApiKeyCredential(apiKey);
-        return new OpenAIClient(credential, openAiOptions);
+        var cacheKey = new OpenAiClientCacheKey(normalized, ComputeCredentialFingerprint(apiKey));
+        return _clientCache.GetOrAdd(
+            cacheKey,
+            static (_, state) =>
+            {
+                var openAiOptions = new OpenAIClientOptions();
+                if (state.NormalizedEndpoint is not null)
+                {
+                    openAiOptions.Endpoint = new Uri(state.NormalizedEndpoint);
+                }
+
+                return new OpenAIClient(new ApiKeyCredential(state.ApiKey), openAiOptions);
+            },
+            (NormalizedEndpoint: normalized, ApiKey: apiKey));
     }
+
+    private static string ComputeCredentialFingerprint(string apiKey)
+        => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(apiKey)));
 
     private static List<Microsoft.Extensions.AI.ChatMessage> BuildChatMessages(ProviderRequest request)
     {
@@ -144,4 +157,6 @@ public sealed class OpenAiCompatibleProvider(
 
         return await credentialStore.ResolveAsync(ProviderName, cancellationToken).ConfigureAwait(false);
     }
+
+    private readonly record struct OpenAiClientCacheKey(string? Endpoint, string CredentialFingerprint);
 }

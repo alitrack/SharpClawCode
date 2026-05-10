@@ -113,11 +113,22 @@ public sealed class ProviderCredentialStore(
         var text = await fileSystem.ReadAllTextIfExistsAsync(path, cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(text))
         {
-            return new StoredCredentialDocument(new Dictionary<string, StoredCredentialEntry>(StringComparer.OrdinalIgnoreCase));
+            return CreateEmptyDocument();
         }
 
-        return JsonSerializer.Deserialize<StoredCredentialDocument>(text, JsonOptions)
-            ?? new StoredCredentialDocument(new Dictionary<string, StoredCredentialEntry>(StringComparer.OrdinalIgnoreCase));
+        try
+        {
+            var document = JsonSerializer.Deserialize<StoredCredentialDocument>(text, JsonOptions);
+            return document?.Providers is null
+                ? CreateEmptyDocument()
+                : new StoredCredentialDocument(document.Providers
+                    .Where(static pair => pair.Value is not null)
+                    .ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.OrdinalIgnoreCase));
+        }
+        catch (JsonException)
+        {
+            return CreateEmptyDocument();
+        }
     }
 
     private Task SaveAsync(StoredCredentialDocument document, CancellationToken cancellationToken)
@@ -125,6 +136,9 @@ public sealed class ProviderCredentialStore(
 
     private string GetPath()
         => pathService.Combine(userProfilePaths.GetUserSharpClawRoot(), CredentialsFileName);
+
+    private static StoredCredentialDocument CreateEmptyDocument()
+        => new(new Dictionary<string, StoredCredentialEntry>(StringComparer.OrdinalIgnoreCase));
 
     private sealed record StoredCredentialDocument(
         Dictionary<string, StoredCredentialEntry> Providers);

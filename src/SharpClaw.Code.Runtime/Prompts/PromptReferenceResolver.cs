@@ -22,6 +22,7 @@ public sealed partial class PromptReferenceResolver(
 {
     private const int MaxDirectoryReferenceFiles = 20;
     private const int MaxDirectoryReferenceBytes = 200 * 1024;
+    private const long MaxImageReferenceBytes = 8 * 1024 * 1024;
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".png", ".jpg", ".jpeg", ".gif", ".webp"
@@ -230,8 +231,35 @@ public sealed partial class PromptReferenceResolver(
 
         if (ImageExtensions.Contains(Path.GetExtension(resolvedFull)))
         {
-            var bytes = await File.ReadAllBytesAsync(resolvedFull, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            var fileInfo = new FileInfo(resolvedFull);
+            if (!fileInfo.Exists)
+            {
+                throw new InvalidOperationException($"Referenced path is missing or unreadable: '{resolvedFull}'.");
+            }
+
             var mediaType = ResolveMediaType(resolvedFull);
+            if (fileInfo.Length > MaxImageReferenceBytes)
+            {
+                var omittedPlaceholder =
+                    $"[Referenced image omitted: {display} exceeds {FormatBytes(MaxImageReferenceBytes)}]" + Environment.NewLine
+                    + $"[End referenced image: {display}]";
+                return (
+                    omittedPlaceholder,
+                    new PromptReference(
+                        PromptReferenceKind.Image,
+                        rawToken,
+                        pathPart,
+                        resolvedFull,
+                        display,
+                        outsideWorkspace,
+                        omittedPlaceholder,
+                        MediaType: mediaType,
+                        IncludedEntryCount: 0),
+                    null);
+            }
+
+            var bytes = await File.ReadAllBytesAsync(resolvedFull, cancellationToken).ConfigureAwait(false);
             var placeholder =
                 $"[Referenced image: {display} ({mediaType})]" + Environment.NewLine
                 + $"[End referenced image: {display}]";
@@ -287,14 +315,9 @@ public sealed partial class PromptReferenceResolver(
         string display,
         CancellationToken cancellationToken)
     {
-        var files = Directory.EnumerateFiles(directoryPath, "*", SearchOption.AllDirectories)
-            .Where(static path => !ShouldSkipPath(path))
-            .OrderBy(static path => path, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
         var included = new List<(string RelativePath, string Content)>();
         var totalBytes = 0;
-        foreach (var file in files)
+        foreach (var file in EnumerateReferenceFiles(directoryPath, cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (included.Count >= MaxDirectoryReferenceFiles)
@@ -307,12 +330,28 @@ public sealed partial class PromptReferenceResolver(
                 continue;
             }
 
+            long fileLength;
+            try
+            {
+                fileLength = new FileInfo(file).Length;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+
+            var remainingBytes = MaxDirectoryReferenceBytes - totalBytes;
+            if (fileLength > remainingBytes)
+            {
+                break;
+            }
+
             string text;
             try
             {
                 text = await File.ReadAllTextAsync(file, cancellationToken).ConfigureAwait(false);
             }
-            catch
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DecoderFallbackException)
             {
                 continue;
             }
@@ -356,9 +395,72 @@ public sealed partial class PromptReferenceResolver(
         return (builder.ToString(), included.Count);
     }
 
+    private static IEnumerable<string> EnumerateReferenceFiles(string directoryPath, CancellationToken cancellationToken)
+    {
+        var pending = new Stack<string>();
+        pending.Push(directoryPath);
+
+        while (pending.Count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var current = pending.Pop();
+            foreach (var file in EnumerateSortedFiles(current))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!ShouldSkipPath(file))
+                {
+                    yield return file;
+                }
+            }
+
+            var directories = EnumerateSortedDirectories(current);
+            for (var i = directories.Length - 1; i >= 0; i--)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!ShouldSkipPath(directories[i]))
+                {
+                    pending.Push(directories[i]);
+                }
+            }
+        }
+    }
+
+    private static string[] EnumerateSortedFiles(string directoryPath)
+    {
+        try
+        {
+            return Directory.EnumerateFiles(directoryPath, "*", SearchOption.TopDirectoryOnly)
+                .OrderBy(static path => path, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
+    private static string[] EnumerateSortedDirectories(string directoryPath)
+    {
+        try
+        {
+            return Directory.EnumerateDirectories(directoryPath, "*", SearchOption.TopDirectoryOnly)
+                .OrderBy(static path => path, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+    }
+
     private static bool ShouldSkipPath(string path)
         => path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
             .Any(static segment => segment is ".git" or ".sharpclaw" or "bin" or "obj");
+
+    private static string FormatBytes(long bytes)
+        => bytes >= 1024 * 1024
+            ? $"{bytes / (1024 * 1024)} MiB"
+            : $"{bytes / 1024} KiB";
 
     private static string ResolveMediaType(string path)
         => Path.GetExtension(path).ToLowerInvariant() switch
