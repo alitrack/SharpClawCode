@@ -191,18 +191,26 @@ public sealed class ConversationRuntimeFlowTests
     {
         using var cts = new CancellationTokenSource();
         var runTask = runtime.RunPromptAsync(request, cts.Token);
-        await WaitForActiveTurnAsync(runtime, workspacePath, CancellationToken.None).ConfigureAwait(false);
+        await WaitForActiveTurnAsync(runtime, runTask, workspacePath, CancellationToken.None).ConfigureAwait(false);
         cts.CancelAfter(cancelAfter);
         await runTask.ConfigureAwait(false);
     }
 
     private static async Task WaitForActiveTurnAsync(
         IConversationRuntime runtime,
+        Task runTask,
         string workspacePath,
         CancellationToken cancellationToken)
     {
-        for (var attempt = 0; attempt < 400; attempt++)
+        var maxAttempts = OperatingSystem.IsWindows() ? 1800 : 400;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
+            if (runTask.IsCompleted)
+            {
+                await runTask.ConfigureAwait(false);
+                throw new TimeoutException("The runtime completed before an active turn could be observed.");
+            }
+
             var latestSession = await runtime.GetLatestSessionAsync(workspacePath, cancellationToken).ConfigureAwait(false);
             if (!string.IsNullOrWhiteSpace(latestSession?.ActiveTurnId))
             {
