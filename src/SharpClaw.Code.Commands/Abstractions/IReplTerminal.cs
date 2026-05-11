@@ -29,4 +29,9 @@ public interface IReplTerminal
     /// </summary>
     /// <param name="message">The message to write.</param>
     void WriteError(string message);
+
+    /// <summary>
+    /// Clears the visible terminal screen.
+    /// </summary>
+    void ClearScreen();
 }

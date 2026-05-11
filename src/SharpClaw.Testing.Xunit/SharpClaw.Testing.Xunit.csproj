@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>xUnit adapter helpers for SharpClaw scenario-based agent testing.</Description>
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SharpClaw.Testing.Abstractions\SharpClaw.Testing.Abstractions.csproj" />
+    <ProjectReference Include="..\SharpClaw.Testing.Harness\SharpClaw.Testing.Harness.csproj" />
+  </ItemGroup>
+
+</Project>

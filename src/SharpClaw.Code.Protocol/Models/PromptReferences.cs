@@ -7,6 +7,12 @@ public enum PromptReferenceKind
 {
     /// <summary>File path reference.</summary>
     File,
+
+    /// <summary>Directory path reference.</summary>
+    Directory,
+
+    /// <summary>Image file reference.</summary>
+    Image,
 }
 
 /// <summary>
@@ -19,7 +25,9 @@ public sealed record PromptReference(
     string ResolvedFullPath,
     string DisplayPath,
     bool WasOutsideWorkspace,
-    string IncludedContent);
+    string IncludedContent,
+    string? MediaType = null,
+    int? IncludedEntryCount = null);
 
 /// <summary>
 /// Result of expanding all <c>@file</c> tokens in a prompt.
@@ -27,4 +35,5 @@ public sealed record PromptReference(
 public sealed record PromptReferenceResolution(
     string OriginalPrompt,
     string ExpandedPrompt,
-    List<PromptReference> References);
+    List<PromptReference> References,
+    IReadOnlyList<ContentBlock> StructuredContent);

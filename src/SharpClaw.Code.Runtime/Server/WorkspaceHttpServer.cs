@@ -52,13 +52,13 @@ public sealed class WorkspaceHttpServer(
         var effectivePort = port is > 0 ? port.Value : config.Document.Server?.Port ?? 7345;
         var prefix = $"http://{effectiveHost}:{effectivePort}/";
 
-        using var listener = new HttpListener();
-        listener.Prefixes.Add(prefix);
-        listener.Start();
-        logger.LogInformation("SharpClaw server listening on {Prefix}", prefix);
-
+        var listener = new HttpListener();
         try
         {
+            listener.Prefixes.Add(prefix);
+            listener.Start();
+            logger.LogInformation("SharpClaw server listening on {Prefix}", prefix);
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 HttpListenerContext httpContext;
@@ -82,10 +82,21 @@ public sealed class WorkspaceHttpServer(
         }
         finally
         {
-            if (listener.IsListening)
-            {
-                listener.Stop();
-            }
+            CloseListener(listener);
+        }
+    }
+
+    private static void CloseListener(HttpListener listener)
+    {
+        try
+        {
+            listener.Close();
+        }
+        catch (HttpListenerException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
         }
     }
 

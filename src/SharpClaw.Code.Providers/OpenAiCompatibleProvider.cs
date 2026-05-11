@@ -1,5 +1,8 @@
+using System.Collections.Concurrent;
 using System.ClientModel;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -18,41 +21,52 @@ namespace SharpClaw.Code.Providers;
 /// </summary>
 public sealed class OpenAiCompatibleProvider(
     IOptions<OpenAiCompatibleProviderOptions> options,
+    IProviderCredentialStore credentialStore,
     ISystemClock systemClock,
     ILogger<OpenAiCompatibleProvider> logger) : IModelProvider
 {
     private readonly OpenAiCompatibleProviderOptions _options = options.Value;
-    private OpenAIClient? _cachedOpenAiClient;
+    private readonly ConcurrentDictionary<OpenAiClientCacheKey, OpenAIClient> _clientCache = new();
     internal const string RuntimeProfileMetadataKey = "openai-compatible.profile";
 
     /// <inheritdoc />
     public string ProviderName => _options.ProviderName;
 
     /// <inheritdoc />
-    public Task<AuthStatus> GetAuthStatusAsync(CancellationToken cancellationToken)
-        => Task.FromResult(Internal.ProviderAuthStatusFactory.FromConfiguration(
-            ProviderName,
-            _options.ApiKey,
-            _options.AuthMode,
-            _options.LocalRuntimes.Values.Any(static runtime => runtime.AuthMode != ProviderAuthMode.ApiKey)));
+    public bool SupportsImageInput => _options.SupportsImageInput;
 
     /// <inheritdoc />
-    public Task<ProviderStreamHandle> StartStreamAsync(ProviderRequest request, CancellationToken cancellationToken)
+    public async Task<AuthStatus> GetAuthStatusAsync(CancellationToken cancellationToken)
+    {
+        var resolved = await ResolveCredentialAsync(cancellationToken).ConfigureAwait(false);
+        return Internal.ProviderAuthStatusFactory.FromConfiguration(
+            ProviderName,
+            resolved.ApiKey,
+            _options.AuthMode,
+            _options.LocalRuntimes.Values.Any(static runtime => runtime.AuthMode != ProviderAuthMode.ApiKey),
+            sourceType: resolved.SourceType ?? (string.IsNullOrWhiteSpace(_options.ApiKey) ? null : "config"),
+            statusDetail: resolved.StatusDetail ?? (string.IsNullOrWhiteSpace(_options.ApiKey) ? null : "configured API key"));
+    }
+
+    /// <inheritdoc />
+    public async Task<ProviderStreamHandle> StartStreamAsync(ProviderRequest request, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         logger.LogInformation("Starting OpenAI-compatible MEAI stream for request {RequestId}.", request.Id);
-        return Task.FromResult(new ProviderStreamHandle(request, StreamEventsAsync(request, cancellationToken)));
+        var resolved = await ResolveCredentialAsync(cancellationToken).ConfigureAwait(false);
+        return new ProviderStreamHandle(request, StreamEventsAsync(request, resolved.ApiKey, cancellationToken));
     }
 
     private async IAsyncEnumerable<ProviderEvent> StreamEventsAsync(
         ProviderRequest request,
+        string? resolvedApiKey,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var profile = ResolveProfile(request.Metadata);
         var modelId = Internal.ProviderHttpHelpers.ResolveModelOrDefault(
             request.Model,
             profile?.DefaultChatModel ?? _options.DefaultModel);
-        var openAiClient = GetOrCreateOpenAiClient(profile);
+        var openAiClient = GetOrCreateOpenAiClient(profile, resolvedApiKey);
         var nativeClient = openAiClient.GetChatClient(modelId);
         using var chatClient = nativeClient.AsIChatClient();
 
@@ -85,30 +99,28 @@ public sealed class OpenAiCompatibleProvider(
         }
     }
 
-    private OpenAIClient GetOrCreateOpenAiClient(LocalRuntimeProfileOptions? profile)
+    private OpenAIClient GetOrCreateOpenAiClient(LocalRuntimeProfileOptions? profile, string? resolvedApiKey)
     {
-        if (profile is null && _cachedOpenAiClient is not null)
-        {
-            return _cachedOpenAiClient;
-        }
-
-        var openAiOptions = new OpenAIClientOptions();
         var normalized = Internal.ProviderHttpHelpers.NormalizeBaseUrl(profile?.BaseUrl ?? _options.BaseUrl);
-        if (normalized is not null)
-        {
-            openAiOptions.Endpoint = new Uri(normalized);
-        }
+        var apiKey = profile?.ApiKey ?? resolvedApiKey ?? _options.ApiKey ?? "local-runtime";
+        var cacheKey = new OpenAiClientCacheKey(normalized, ComputeCredentialFingerprint(apiKey));
+        return _clientCache.GetOrAdd(
+            cacheKey,
+            static (_, state) =>
+            {
+                var openAiOptions = new OpenAIClientOptions();
+                if (state.NormalizedEndpoint is not null)
+                {
+                    openAiOptions.Endpoint = new Uri(state.NormalizedEndpoint);
+                }
 
-        var apiKey = profile?.ApiKey ?? _options.ApiKey ?? "local-runtime";
-        var credential = new ApiKeyCredential(apiKey);
-        var client = new OpenAIClient(credential, openAiOptions);
-        if (profile is null)
-        {
-            _cachedOpenAiClient = client;
-        }
-
-        return client;
+                return new OpenAIClient(new ApiKeyCredential(state.ApiKey), openAiOptions);
+            },
+            (NormalizedEndpoint: normalized, ApiKey: apiKey));
     }
+
+    private static string ComputeCredentialFingerprint(string apiKey)
+        => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(apiKey)));
 
     private static List<Microsoft.Extensions.AI.ChatMessage> BuildChatMessages(ProviderRequest request)
     {
@@ -135,4 +147,16 @@ public sealed class OpenAiCompatibleProvider(
             ? profile
             : null;
     }
+
+    private async Task<ResolvedProviderCredential> ResolveCredentialAsync(CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(_options.ApiKey))
+        {
+            return new ResolvedProviderCredential(_options.ApiKey, "config", "configured API key");
+        }
+
+        return await credentialStore.ResolveAsync(ProviderName, cancellationToken).ConfigureAwait(false);
+    }
+
+    private readonly record struct OpenAiClientCacheKey(string? Endpoint, string CredentialFingerprint);
 }

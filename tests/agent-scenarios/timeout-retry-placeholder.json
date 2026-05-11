@@ -1,0 +1,45 @@
+{
+  "id": "timeout-retry-placeholder",
+  "name": "Timeout retry placeholder scenario",
+  "description": "Documents the trace and oracle shape expected once runtime retry capture is connected.",
+  "risk": "Medium",
+  "tags": [
+    "timeout",
+    "replay"
+  ],
+  "input": {
+    "prompt": "Run a slow provider turn and capture retry state.",
+    "executor": "scripted",
+    "metadata": {
+      "timedOut": "true"
+    },
+    "scriptedTrace": [
+      {
+        "kind": "StateChange",
+        "stateChange": {
+          "key": "retry.scheduled",
+          "oldValue": "false",
+          "newValue": "true"
+        }
+      }
+    ],
+    "scriptedFinalAnswer": "Timeout captured; retry scheduled for a future runtime adapter."
+  },
+  "expected": {
+    "oracles": [
+      {
+        "type": "StateEquals",
+        "stateKey": "retry.scheduled",
+        "expectedValue": "true"
+      },
+      {
+        "type": "FinalAnswerContains",
+        "text": "retry scheduled"
+      },
+      {
+        "type": "MaxToolCalls",
+        "maxCount": 0
+      }
+    ]
+  }
+}

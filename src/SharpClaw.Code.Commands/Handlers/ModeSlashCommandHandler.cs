@@ -15,7 +15,7 @@ public sealed class ModeSlashCommandHandler(
     public string CommandName => "mode";
 
     /// <inheritdoc />
-    public string Description => "Shows or sets build, plan, or spec mode for the REPL session.";
+    public string Description => "Shows or sets build, plan, spec, or research mode for the REPL session.";
 
     /// <inheritdoc />
     public Task<int> ExecuteAsync(SlashCommandParseResult command, CommandExecutionContext context, CancellationToken cancellationToken)
@@ -31,13 +31,14 @@ public sealed class ModeSlashCommandHandler(
         {
             "plan" => PrimaryMode.Plan,
             "spec" => PrimaryMode.Spec,
+            "research" => PrimaryMode.Research,
             "build" => PrimaryMode.Build,
             _ => (PrimaryMode?)null,
         };
 
         if (next is null)
         {
-            return RenderAsync("Usage: /mode [build|plan|spec]", context, cancellationToken, success: false);
+            return RenderAsync("Usage: /mode [build|plan|spec|research]", context, cancellationToken, success: false);
         }
 
         replState.PrimaryModeOverride = next;

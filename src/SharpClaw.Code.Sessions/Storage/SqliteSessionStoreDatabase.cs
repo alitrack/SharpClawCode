@@ -46,6 +46,23 @@ internal static class SqliteSessionStoreDatabase
                 payload_json TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS ix_runtime_events_session_sequence ON runtime_events(session_id, sequence);
+
+            CREATE TABLE IF NOT EXISTS scheduled_prompts (
+                schedule_id TEXT PRIMARY KEY,
+                updated_at_utc TEXT NOT NULL,
+                enabled INTEGER NOT NULL,
+                next_run_utc TEXT NULL,
+                payload_json TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS ix_scheduled_prompts_enabled_next_run ON scheduled_prompts(enabled, next_run_utc);
+
+            CREATE TABLE IF NOT EXISTS evolution_proposals (
+                proposal_id TEXT PRIMARY KEY,
+                updated_at_utc TEXT NOT NULL,
+                status TEXT NOT NULL,
+                payload_json TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS ix_evolution_proposals_status_updated_at ON evolution_proposals(status, updated_at_utc DESC);
             """;
 
         await using var command = connection.CreateCommand();

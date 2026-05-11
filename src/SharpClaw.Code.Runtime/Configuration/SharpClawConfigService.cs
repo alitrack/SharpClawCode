@@ -32,10 +32,20 @@ public sealed class SharpClawConfigService(
 
         var normalizedWorkspace = pathService.GetFullPath(workspaceRoot);
         var userConfigPath = GetUserConfigPath();
-        var workspaceConfigPath = pathService.Combine(normalizedWorkspace, "sharpclaw.jsonc");
+        var workspaceConfigPath = pathService.Combine(normalizedWorkspace, ".sharpclaw", "config.jsonc");
+        var legacyWorkspaceConfigPath = pathService.Combine(normalizedWorkspace, "sharpclaw.jsonc");
 
         var userDocument = await LoadDocumentAsync(userConfigPath, cancellationToken).ConfigureAwait(false);
         var workspaceDocument = await LoadDocumentAsync(workspaceConfigPath, cancellationToken).ConfigureAwait(false);
+        if (workspaceDocument is null)
+        {
+            workspaceDocument = await LoadDocumentAsync(legacyWorkspaceConfigPath, cancellationToken).ConfigureAwait(false);
+            if (workspaceDocument is not null)
+            {
+                workspaceConfigPath = legacyWorkspaceConfigPath;
+            }
+        }
+
         var merged = Merge(userDocument, workspaceDocument);
 
         return new SharpClawConfigSnapshot(

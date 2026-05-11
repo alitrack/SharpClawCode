@@ -33,4 +33,8 @@ public sealed class SpectreReplTerminal : IReplTerminal
     /// <inheritdoc />
     public void WriteError(string message)
         => AnsiConsole.MarkupLine($"[red]{Markup.Escape(message)}[/]");
+
+    /// <inheritdoc />
+    public void ClearScreen()
+        => AnsiConsole.Clear();
 }

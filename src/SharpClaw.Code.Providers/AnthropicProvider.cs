@@ -17,6 +17,7 @@ namespace SharpClaw.Code.Providers;
 /// </summary>
 public sealed class AnthropicProvider(
     IOptions<AnthropicProviderOptions> options,
+    IProviderCredentialStore credentialStore,
     ISystemClock systemClock,
     ILogger<AnthropicProvider> logger) : IModelProvider
 {
@@ -26,18 +27,27 @@ public sealed class AnthropicProvider(
     public string ProviderName => _options.ProviderName;
 
     /// <inheritdoc />
-    public Task<AuthStatus> GetAuthStatusAsync(CancellationToken cancellationToken)
-        => Task.FromResult(Internal.ProviderAuthStatusFactory.FromConfiguration(
-            ProviderName,
-            _options.ApiKey,
-            ProviderAuthMode.ApiKey,
-            hasAuthOptionalRuntime: false));
+    public bool SupportsImageInput => _options.SupportsImageInput;
 
     /// <inheritdoc />
-    public Task<ProviderStreamHandle> StartStreamAsync(ProviderRequest request, CancellationToken cancellationToken)
+    public async Task<AuthStatus> GetAuthStatusAsync(CancellationToken cancellationToken)
+    {
+        var resolved = await ResolveCredentialAsync(cancellationToken).ConfigureAwait(false);
+        return Internal.ProviderAuthStatusFactory.FromConfiguration(
+            ProviderName,
+            resolved.ApiKey,
+            ProviderAuthMode.ApiKey,
+            hasAuthOptionalRuntime: false,
+            sourceType: resolved.SourceType ?? (string.IsNullOrWhiteSpace(_options.ApiKey) ? null : "config"),
+            statusDetail: resolved.StatusDetail ?? (string.IsNullOrWhiteSpace(_options.ApiKey) ? null : "configured API key"));
+    }
+
+    /// <inheritdoc />
+    public async Task<ProviderStreamHandle> StartStreamAsync(ProviderRequest request, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var client = CreateClient();
+        var resolved = await ResolveCredentialAsync(cancellationToken).ConfigureAwait(false);
+        var client = CreateClient(resolved.ApiKey);
         var modelId = Internal.ProviderHttpHelpers.ResolveModelOrDefault(request.Model, _options.DefaultModel);
 
         var systemPrompt = string.IsNullOrWhiteSpace(request.SystemPrompt) ? null : request.SystemPrompt;
@@ -108,12 +118,12 @@ public sealed class AnthropicProvider(
 
         logger.LogInformation("Started Anthropic SDK stream for request {RequestId}.", request.Id);
 
-        return Task.FromResult(new ProviderStreamHandle(request, AnthropicSdkStreamAdapter.AdaptAsync(stream, request.Id, systemClock, cancellationToken)));
+        return new ProviderStreamHandle(request, AnthropicSdkStreamAdapter.AdaptAsync(stream, request.Id, systemClock, cancellationToken));
     }
 
-    private AnthropicClient CreateClient()
+    private AnthropicClient CreateClient(string? resolvedApiKey)
     {
-        var apiKey = _options.ApiKey ?? string.Empty;
+        var apiKey = resolvedApiKey ?? _options.ApiKey ?? string.Empty;
         var clientOptions = new ClientOptions
         {
             ApiKey = apiKey,
@@ -126,5 +136,15 @@ public sealed class AnthropicProvider(
         }
 
         return new AnthropicClient(clientOptions);
+    }
+
+    private async Task<ResolvedProviderCredential> ResolveCredentialAsync(CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(_options.ApiKey))
+        {
+            return new ResolvedProviderCredential(_options.ApiKey, "config", "configured API key");
+        }
+
+        return await credentialStore.ResolveAsync(ProviderName, cancellationToken).ConfigureAwait(false);
     }
 }

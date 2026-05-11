@@ -14,6 +14,11 @@ public sealed class ReplInteractionState
     public PrimaryMode? PrimaryModeOverride { get; set; }
 
     /// <summary>
+    /// When set, wins over <see cref="Models.CommandExecutionContext.PermissionMode"/> for REPL turns.
+    /// </summary>
+    public PermissionMode? PermissionModeOverride { get; set; }
+
+    /// <summary>
     /// When set, wins over <see cref="Models.CommandExecutionContext.AgentId"/> for REPL turns.
     /// </summary>
     public string? AgentIdOverride { get; set; }
@@ -22,4 +27,15 @@ public sealed class ReplInteractionState
     /// When set, wins over <see cref="Models.CommandExecutionContext.ApprovalSettings"/> for REPL turns.
     /// </summary>
     public ApprovalSettings? ApprovalSettingsOverride { get; set; }
+
+    /// <summary>
+    /// Clears ephemeral REPL overrides.
+    /// </summary>
+    public void ClearTransientOverrides()
+    {
+        PrimaryModeOverride = null;
+        PermissionModeOverride = null;
+        AgentIdOverride = null;
+        ApprovalSettingsOverride = null;
+    }
 }

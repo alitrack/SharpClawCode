@@ -8,7 +8,10 @@ internal static class ProviderAuthStatusFactory
         string providerName,
         string? apiKey,
         ProviderAuthMode authMode,
-        bool hasAuthOptionalRuntime)
+        bool hasAuthOptionalRuntime,
+        string? sourceType = null,
+        string? statusDetail = null,
+        bool isLocalRuntime = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(providerName);
         var ok = authMode switch
@@ -23,6 +26,9 @@ internal static class ProviderAuthStatusFactory
             ProviderName: providerName,
             OrganizationId: null,
             ExpiresAtUtc: null,
-            GrantedScopes: ok ? ["api"] : []);
+            GrantedScopes: ok ? ["api"] : [],
+            SourceType: sourceType,
+            StatusDetail: statusDetail,
+            IsLocalRuntime: isLocalRuntime);
     }
 }

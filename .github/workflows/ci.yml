@@ -33,6 +33,10 @@ jobs:
           dotnet build examples/McpToolAgent/McpToolAgent.csproj --no-restore --configuration Release
       - name: Test
         run: dotnet test SharpClawCode.sln --no-build --configuration Release --collect:"XPlat Code Coverage" --results-directory ./coverage
+      - name: Agent scenario harness
+        run: |
+          dotnet run --project src/SharpClaw.Code.Cli/SharpClaw.Code.Cli.csproj --no-build --configuration Release -- test run
+          dotnet run --project src/SharpClaw.Code.Cli/SharpClaw.Code.Cli.csproj --no-build --configuration Release -- test gates
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4

@@ -235,6 +235,7 @@ public sealed record AgentCatalogEntry(
 /// <param name="AuthStatus">Current authentication state.</param>
 /// <param name="SupportsToolCalls">Whether tool calling is supported.</param>
 /// <param name="SupportsEmbeddings">Whether embeddings are supported.</param>
+/// <param name="SupportsImageInput">Whether multimodal image input is supported.</param>
 /// <param name="AvailableModels">Discovered models for the provider.</param>
 /// <param name="LocalRuntimeProfiles">Configured local runtime profiles, if any.</param>
 public sealed record ProviderModelCatalogEntry(
@@ -244,6 +245,7 @@ public sealed record ProviderModelCatalogEntry(
     AuthStatus AuthStatus,
     bool SupportsToolCalls = true,
     bool SupportsEmbeddings = false,
+    bool SupportsImageInput = false,
     ProviderDiscoveredModel[]? AvailableModels = null,
     LocalRuntimeProfileSummary[]? LocalRuntimeProfiles = null);
 

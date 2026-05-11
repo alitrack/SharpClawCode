@@ -18,6 +18,7 @@ namespace SharpClaw.Code.Protocol.Models;
 /// <param name="Messages">The conversation history to send to the provider, if any.</param>
 /// <param name="Tools">The tool definitions available to the provider, if any.</param>
 /// <param name="MaxTokens">The maximum number of tokens to generate, if any.</param>
+/// <param name="ContainsImageInput">Whether the request contains structured image content blocks.</param>
 public sealed record ProviderRequest(
     string Id,
     string SessionId,
@@ -31,4 +32,5 @@ public sealed record ProviderRequest(
     Dictionary<string, string>? Metadata,
     IReadOnlyList<ChatMessage>? Messages = null,
     IReadOnlyList<ProviderToolDefinition>? Tools = null,
-    int? MaxTokens = null);
+    int? MaxTokens = null,
+    bool ContainsImageInput = false);

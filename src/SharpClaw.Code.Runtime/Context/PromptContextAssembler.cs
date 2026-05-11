@@ -67,6 +67,36 @@ public sealed class PromptContextAssembler(
             ? new Dictionary<string, string>(StringComparer.Ordinal)
             : new Dictionary<string, string>(request.Metadata, StringComparer.Ordinal);
 
+        if (session.Metadata is not null)
+        {
+            if (session.Metadata.TryGetValue(SharpClawWorkflowMetadataKeys.TrustedPluginNamesJson, out var trustedPluginsJson)
+                && !string.IsNullOrWhiteSpace(trustedPluginsJson))
+            {
+                metadata[SharpClawWorkflowMetadataKeys.TrustedPluginNamesJson] = trustedPluginsJson;
+            }
+
+            if (session.Metadata.TryGetValue(SharpClawWorkflowMetadataKeys.TrustedMcpServerNamesJson, out var trustedMcpJson)
+                && !string.IsNullOrWhiteSpace(trustedMcpJson))
+            {
+                metadata[SharpClawWorkflowMetadataKeys.TrustedMcpServerNamesJson] = trustedMcpJson;
+            }
+
+            if (session.Metadata.TryGetValue(SharpClawWorkflowMetadataKeys.PreferredPermissionMode, out var preferredPermissionMode)
+                && !string.IsNullOrWhiteSpace(preferredPermissionMode))
+            {
+                metadata[SharpClawWorkflowMetadataKeys.PreferredPermissionMode] = preferredPermissionMode;
+            }
+        }
+
+        if (!metadata.ContainsKey("model")
+            && session.Metadata is not null
+            && session.Metadata.TryGetValue(SharpClawWorkflowMetadataKeys.SessionModelPreferenceJson, out var storedModelPreference)
+            && TryReadSessionModelPreference(storedModelPreference) is { } preferredModel
+            && !string.IsNullOrWhiteSpace(preferredModel))
+        {
+            metadata["model"] = preferredModel;
+        }
+
         if (!metadata.ContainsKey("model")
             && memoryContext.RepositorySettings.TryGetValue("defaultModel", out var defaultModel)
             && !string.IsNullOrWhiteSpace(defaultModel))
@@ -212,8 +242,20 @@ public sealed class PromptContextAssembler(
         {
             sections.Add(specWorkflowService.BuildPromptInstructions());
         }
+        else if (effectivePrimary == Protocol.Enums.PrimaryMode.Research)
+        {
+            sections.Add(
+                """
+                Research mode is active.
+
+                Prefer explicit citations, confidence notes, and unresolved questions.
+                Use read-only investigation tools only. Distinguish confirmed findings from inference.
+                """);
+        }
 
         sections.Add($"User request:\n{refResolution.ExpandedPrompt}");
+
+        var finalPrompt = string.Join(Environment.NewLine + Environment.NewLine, sections);
 
         // Prefer cached history for the previous turn when available; on a cache miss,
         // fall back to reading the full event log and re-assembling the history for caching.
@@ -234,9 +276,10 @@ public sealed class PromptContextAssembler(
         }
 
         return new PromptExecutionContext(
-            Prompt: string.Join(Environment.NewLine + Environment.NewLine, sections),
+            Prompt: finalPrompt,
             Metadata: metadata,
-            ConversationHistory: conversationHistory);
+            ConversationHistory: conversationHistory,
+            UserContent: BuildUserContent(finalPrompt, refResolution));
     }
 
     private static string RenderInstructionRules(InstructionRuleSnapshot snapshot)
@@ -249,5 +292,33 @@ public sealed class PromptContextAssembler(
         }
 
         return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string? TryReadSessionModelPreference(string payload)
+    {
+        try
+        {
+            var preference = JsonSerializer.Deserialize(payload, ProtocolJsonContext.Default.SessionModelPreference);
+            return string.IsNullOrWhiteSpace(preference?.Model) ? null : preference.Model;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static IReadOnlyList<ContentBlock> BuildUserContent(string prompt, PromptReferenceResolution resolution)
+    {
+        var blocks = new List<ContentBlock>
+        {
+            new(ContentBlockKind.Text, prompt, null, null, null, null)
+        };
+
+        if (resolution.StructuredContent is { Count: > 0 })
+        {
+            blocks.AddRange(resolution.StructuredContent);
+        }
+
+        return blocks;
     }
 }

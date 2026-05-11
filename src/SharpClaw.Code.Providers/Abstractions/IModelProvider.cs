@@ -14,6 +14,11 @@ public interface IModelProvider
     string ProviderName { get; }
 
     /// <summary>
+    /// Gets whether the provider accepts structured image input.
+    /// </summary>
+    bool SupportsImageInput => false;
+
+    /// <summary>
     /// Gets the current authentication status for the provider.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>

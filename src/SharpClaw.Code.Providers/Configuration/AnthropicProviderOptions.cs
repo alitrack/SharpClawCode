@@ -29,4 +29,9 @@ public sealed class AnthropicProviderOptions
     /// Gets or sets the default model id.
     /// </summary>
     public string DefaultModel { get; set; } = "claude-3-7-sonnet-latest";
+
+    /// <summary>
+    /// Gets or sets whether the provider supports structured image input.
+    /// </summary>
+    public bool SupportsImageInput { get; set; } = true;
 }

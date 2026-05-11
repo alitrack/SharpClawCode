@@ -74,6 +74,18 @@ public static class SharpClawWorkflowMetadataKeys
     /// <summary>Most recent deep-planning next action captured for the session.</summary>
     public const string DeepPlanningNextAction = "sharpclaw.deepPlanningNextAction";
 
+    /// <summary>Preferred permission mode persisted for the session.</summary>
+    public const string PreferredPermissionMode = "sharpclaw.preferredPermissionMode";
+
+    /// <summary>JSON array of trusted plugin ids for the session.</summary>
+    public const string TrustedPluginNamesJson = "sharpclaw.trustedPluginNamesJson";
+
+    /// <summary>JSON array of trusted MCP server names for the session.</summary>
+    public const string TrustedMcpServerNamesJson = "sharpclaw.trustedMcpServerNamesJson";
+
+    /// <summary>Serialized <see cref="SessionModelPreference"/> persisted for the session.</summary>
+    public const string SessionModelPreferenceJson = "sharpclaw.sessionModelPreferenceJson";
+
     /// <summary>Prefix for managed todo id maps keyed by owner agent id.</summary>
     public const string ManagedSessionTodoMapPrefix = "sharpclaw.managedSessionTodoMap.";
 

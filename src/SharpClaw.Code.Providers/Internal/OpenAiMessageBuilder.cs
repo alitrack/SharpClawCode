@@ -94,6 +94,12 @@ internal static class OpenAiMessageBuilder
         {
             ContentBlockKind.Text => new TextContent(block.Text ?? string.Empty),
 
+            ContentBlockKind.Image => string.IsNullOrWhiteSpace(block.Data)
+                ? null
+                : new DataContent(
+                    Convert.FromBase64String(block.Data),
+                    block.MediaType ?? "application/octet-stream"),
+
             ContentBlockKind.ToolUse => new FunctionCallContent(
                 callId: block.ToolUseId ?? string.Empty,
                 name: block.ToolName ?? string.Empty,

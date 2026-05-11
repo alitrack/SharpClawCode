@@ -279,10 +279,7 @@ public sealed class ApprovalAuthIntegrationTests
         public async ValueTask DisposeAsync()
         {
             cancellationTokenSource.Cancel();
-            if (listener.IsListening)
-            {
-                listener.Stop();
-            }
+            CloseListener();
 
             try
             {
@@ -294,10 +291,27 @@ public sealed class ApprovalAuthIntegrationTests
             catch (HttpListenerException)
             {
             }
+            catch (ObjectDisposedException)
+            {
+            }
 
-            listener.Close();
+            CloseListener();
             rsa.Dispose();
             cancellationTokenSource.Dispose();
+        }
+
+        private void CloseListener()
+        {
+            try
+            {
+                listener.Close();
+            }
+            catch (HttpListenerException)
+            {
+            }
+            catch (ObjectDisposedException)
+            {
+            }
         }
 
         private async Task RunAsync(CancellationToken cancellationToken)
@@ -314,6 +328,10 @@ public sealed class ApprovalAuthIntegrationTests
                     break;
                 }
                 catch (HttpListenerException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
                 {
                     break;
                 }

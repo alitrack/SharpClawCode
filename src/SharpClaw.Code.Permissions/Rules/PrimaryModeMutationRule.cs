@@ -6,7 +6,7 @@ using SharpClaw.Code.Protocol.Models;
 namespace SharpClaw.Code.Permissions.Rules;
 
 /// <summary>
-/// Blocks mutating tool executions while the session is in <see cref="PrimaryMode.Plan"/>.
+/// Blocks mutating tool executions while the session is in a read-only workflow mode.
 /// </summary>
 public sealed class PrimaryModeMutationRule : IPermissionRule
 {
@@ -16,19 +16,21 @@ public sealed class PrimaryModeMutationRule : IPermissionRule
         PermissionEvaluationContext context,
         CancellationToken cancellationToken)
     {
-        if (context.PrimaryMode != PrimaryMode.Plan)
+        if (context.PrimaryMode is not (PrimaryMode.Plan or PrimaryMode.Research))
         {
             return Task.FromResult(PermissionRuleResult.Abstain());
         }
 
+        var modeLabel = context.PrimaryMode == PrimaryMode.Research ? "Research mode" : "Plan mode";
+
         if (request.IsDestructive)
         {
-            return Task.FromResult(PermissionRuleResult.Deny("Plan mode blocks mutating tools."));
+            return Task.FromResult(PermissionRuleResult.Deny($"{modeLabel} blocks mutating tools."));
         }
 
         if (request.ApprovalScope is ApprovalScope.FileSystemWrite or ApprovalScope.ShellExecution)
         {
-            return Task.FromResult(PermissionRuleResult.Deny($"Plan mode blocks {request.ApprovalScope}."));
+            return Task.FromResult(PermissionRuleResult.Deny($"{modeLabel} blocks {request.ApprovalScope}."));
         }
 
         return Task.FromResult(PermissionRuleResult.Abstain());
