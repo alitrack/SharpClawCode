@@ -39,6 +39,7 @@ public static class CliServiceCollectionExtensions
         services.AddSingleton<ScheduleCommandHandler>();
         services.AddSingleton<EvolutionCommandHandler>();
         services.AddSingleton<ModelsCommandHandler>();
+        services.AddSingleton<AgentsCommandHandler>();
         services.AddSingleton<ICommandHandler, PromptCommandHandler>();
         services.AddSingleton<ICommandHandler, StatusCommandHandler>();
         services.AddSingleton<ICommandHandler, DoctorCommandHandler>();
@@ -58,8 +59,11 @@ public static class CliServiceCollectionExtensions
         services.AddSingleton<ICommandHandler, HooksCommandHandler>();
         services.AddSingleton<ICommandHandler, MemoryCommandHandler>();
         services.AddSingleton<ICommandHandler, SkillsCommandHandler>();
-        services.AddSingleton<ICommandHandler, AgentsCommandHandler>();
+        services.AddSingleton<ICommandHandler>(serviceProvider => serviceProvider.GetRequiredService<AgentsCommandHandler>());
+        services.AddSingleton<ICommandHandler, ExternalCommandHandler>();
         services.AddSingleton<ICommandHandler, TodoCommandHandler>();
+        services.AddSingleton<ICommandHandler, WorkCommandHandler>();
+        services.AddSingleton<ICommandHandler, WorkbenchCommandHandler>();
         services.AddSingleton<ICommandHandler, ShareCommandHandler>();
         services.AddSingleton<ICommandHandler, UnshareCommandHandler>();
         services.AddSingleton<ICommandHandler, CompactCommandHandler>();
@@ -93,8 +97,12 @@ public static class CliServiceCollectionExtensions
         services.AddSingleton<ISlashCommandHandler, HooksCommandHandler>();
         services.AddSingleton<ISlashCommandHandler, MemoryCommandHandler>();
         services.AddSingleton<ISlashCommandHandler, SkillsCommandHandler>();
-        services.AddSingleton<ISlashCommandHandler, AgentsCommandHandler>();
+        services.AddSingleton<ISlashCommandHandler>(serviceProvider => serviceProvider.GetRequiredService<AgentsCommandHandler>());
         services.AddSingleton<ISlashCommandHandler, TodoCommandHandler>();
+        services.AddSingleton<ISlashCommandHandler, WorkCommandHandler>();
+        services.AddSingleton<ISlashCommandHandler, WorkbenchCommandHandler>();
+        services.AddSingleton<ISlashCommandHandler, AgentStatusSlashCommandHandler>();
+        services.AddSingleton<ISlashCommandHandler, CheckpointsSlashCommandHandler>();
         services.AddSingleton<ISlashCommandHandler, ShareCommandHandler>();
         services.AddSingleton<ISlashCommandHandler, UnshareCommandHandler>();
         services.AddSingleton<ISlashCommandHandler, CompactCommandHandler>();

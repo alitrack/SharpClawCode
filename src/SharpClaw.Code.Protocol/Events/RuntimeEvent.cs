@@ -43,6 +43,14 @@ namespace SharpClaw.Code.Protocol.Events;
 [JsonDerivedType(typeof(RedoRequestedEvent), "redoRequested")]
 [JsonDerivedType(typeof(RedoCompletedEvent), "redoCompleted")]
 [JsonDerivedType(typeof(RedoFailedEvent), "redoFailed")]
+[JsonDerivedType(typeof(ExternalAgentRunStartedEvent), "externalAgentRunStarted")]
+[JsonDerivedType(typeof(ExternalAgentRunCompletedEvent), "externalAgentRunCompleted")]
+[JsonDerivedType(typeof(ExternalAgentRunFailedEvent), "externalAgentRunFailed")]
+[JsonDerivedType(typeof(SkillPackInstalledEvent), "skillPackInstalled")]
+[JsonDerivedType(typeof(SkillInvokedEvent), "skillInvoked")]
+[JsonDerivedType(typeof(WorkItemImportedEvent), "workItemImported")]
+[JsonDerivedType(typeof(WorkItemSummaryExportedEvent), "workItemSummaryExported")]
+[JsonDerivedType(typeof(WorkbenchViewedEvent), "workbenchViewed")]
 public abstract record RuntimeEvent(
     string EventId,
     string SessionId,

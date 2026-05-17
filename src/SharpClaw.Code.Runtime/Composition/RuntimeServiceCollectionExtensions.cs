@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SharpClaw.Code.Agents;
+using SharpClaw.Code.ExternalAgents;
+using SharpClaw.Code.ExternalAgents.Abstractions;
 using SharpClaw.Code.Git;
 using SharpClaw.Code.Infrastructure;
 using SharpClaw.Code.Infrastructure.Abstractions;
@@ -19,6 +21,7 @@ using SharpClaw.Code.Runtime.Bridge;
 using SharpClaw.Code.Runtime.Diagnostics;
 using SharpClaw.Code.Runtime.Diagnostics.Checks;
 using SharpClaw.Code.Runtime.Export;
+using SharpClaw.Code.Runtime.ExternalAgents;
 using SharpClaw.Code.Runtime.Lifecycle;
 using SharpClaw.Code.Runtime.Mutations;
 using SharpClaw.Code.Runtime.Prompts;
@@ -32,6 +35,7 @@ using SharpClaw.Code.Sessions.Storage;
 using SharpClaw.Code.Telemetry;
 using SharpClaw.Code.Telemetry.Abstractions;
 using SharpClaw.Code.Telemetry.Services;
+using SharpClaw.Code.WorkItems;
 
 namespace SharpClaw.Code.Runtime.Composition;
 
@@ -92,9 +96,12 @@ public static class RuntimeServiceCollectionExtensions
         }
 
         services.AddSharpClawAgents();
+        services.AddSharpClawExternalAgents();
+        services.AddSingleton<IExternalAgentConfigProvider, RuntimeExternalAgentConfigProvider>();
         services.AddSharpClawMemory();
         services.AddSharpClawSkills();
         services.AddSharpClawGit();
+        services.AddSharpClawWorkItems();
         services.AddSingleton<IUsageMeteringStore, SqliteUsageMeteringStore>();
         services.AddSingleton<UsageMeteringService>();
         services.AddSingleton<IUsageMeteringService>(serviceProvider => serviceProvider.GetRequiredService<UsageMeteringService>());
@@ -140,6 +147,7 @@ public static class RuntimeServiceCollectionExtensions
         services.AddSingleton<IHookDispatcher, HookDispatcher>();
         services.AddSingleton<ITodoService, TodoService>();
         services.AddSingleton<IWorkspaceInsightsService, WorkspaceInsightsService>();
+        services.AddSingleton<IWorkbenchStatusService, WorkbenchStatusService>();
         services.AddSingleton<IWorkspaceHttpServer, WorkspaceHttpServer>();
         services.AddSingleton<ISessionExportService, SessionExportService>();
         services.AddSingleton<IPromptContextAssembler, PromptContextAssembler>();
@@ -164,6 +172,7 @@ public static class RuntimeServiceCollectionExtensions
         services.AddSingleton<IOperationalCheck, ProviderAuthenticationCheck>();
         services.AddSingleton<IOperationalCheck, ApprovalAuthCheck>();
         services.AddSingleton<IOperationalCheck, LocalRuntimeCatalogCheck>();
+        services.AddSingleton<IOperationalCheck, ExternalAgentHealthCheck>();
         services.AddSingleton<IOperationalCheck>(sp => new McpRegistryHealthCheck(
             sp.GetRequiredService<IMcpRegistry>(),
             sp.GetService<IMcpServerHost>()));

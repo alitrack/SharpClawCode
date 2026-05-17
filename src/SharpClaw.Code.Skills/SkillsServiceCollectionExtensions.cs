@@ -19,6 +19,7 @@ public static class SkillsServiceCollectionExtensions
     {
         services.AddSharpClawInfrastructure();
         services.AddSingleton<ISkillRegistry, SkillRegistry>();
+        services.AddSingleton<ISkillPackRegistry, SkillPackRegistry>();
         return services;
     }
 }

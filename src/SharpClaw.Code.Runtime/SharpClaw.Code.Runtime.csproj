@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SharpClaw.Code.Protocol\SharpClaw.Code.Protocol.csproj" />
     <ProjectReference Include="..\SharpClaw.Code.Agents\SharpClaw.Code.Agents.csproj" />
+    <ProjectReference Include="..\SharpClaw.Code.ExternalAgents\SharpClaw.Code.ExternalAgents.csproj" />
     <ProjectReference Include="..\SharpClaw.Code.Providers\SharpClaw.Code.Providers.csproj" />
     <ProjectReference Include="..\SharpClaw.Code.Tools\SharpClaw.Code.Tools.csproj" />
     <ProjectReference Include="..\SharpClaw.Code.Permissions\SharpClaw.Code.Permissions.csproj" />
@@ -29,6 +30,7 @@
     <ProjectReference Include="..\SharpClaw.Code.Skills\SharpClaw.Code.Skills.csproj" />
     <ProjectReference Include="..\SharpClaw.Code.Telemetry\SharpClaw.Code.Telemetry.csproj" />
     <ProjectReference Include="..\SharpClaw.Code.Infrastructure\SharpClaw.Code.Infrastructure.csproj" />
+    <ProjectReference Include="..\SharpClaw.Code.WorkItems\SharpClaw.Code.WorkItems.csproj" />
   </ItemGroup>
 
 </Project>

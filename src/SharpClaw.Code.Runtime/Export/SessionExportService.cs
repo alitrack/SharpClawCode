@@ -145,6 +145,13 @@ public sealed class SessionExportService(
             TurnStartedEvent => $"turnStarted {((TurnStartedEvent)@event).Turn.Id}",
             TurnCompletedEvent done => $"turnCompleted {done.Turn.Id} ok={done.Succeeded}",
             ToolCompletedEvent tool => $"toolCompleted {tool.Result.ToolName}",
+            ExternalAgentRunStartedEvent external => $"externalAgentRunStarted {external.AdapterId}",
+            ExternalAgentRunCompletedEvent external => $"externalAgentRunCompleted {external.AdapterId}",
+            ExternalAgentRunFailedEvent external => $"externalAgentRunFailed {external.AdapterId} {external.FailureKind}",
+            SkillInvokedEvent skill => $"skillInvoked {skill.SkillId}",
+            WorkItemImportedEvent work => $"workItemImported {work.WorkItem.Provider}:{work.WorkItem.Id}",
+            WorkItemSummaryExportedEvent work => $"workItemSummaryExported {work.Provider}",
+            WorkbenchViewedEvent => "workbenchViewed",
             _ => @event.GetType().Name,
         };
 }

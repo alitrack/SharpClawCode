@@ -86,6 +86,18 @@ public static class SharpClawWorkflowMetadataKeys
     /// <summary>Serialized <see cref="SessionModelPreference"/> persisted for the session.</summary>
     public const string SessionModelPreferenceJson = "sharpclaw.sessionModelPreferenceJson";
 
+    /// <summary>Serialized imported work item persisted for the session.</summary>
+    public const string WorkItemJson = "sharpclaw.workItemJson";
+
+    /// <summary>Short work item goal pinned to the session.</summary>
+    public const string WorkItemGoal = "sharpclaw.workItemGoal";
+
+    /// <summary>Most recently invoked skill pack id.</summary>
+    public const string ActiveSkillPackId = "sharpclaw.activeSkillPackId";
+
+    /// <summary>Most recently invoked external agent id.</summary>
+    public const string LastExternalAgentId = "sharpclaw.lastExternalAgentId";
+
     /// <summary>Prefix for managed todo id maps keyed by owner agent id.</summary>
     public const string ManagedSessionTodoMapPrefix = "sharpclaw.managedSessionTodoMap.";
 
