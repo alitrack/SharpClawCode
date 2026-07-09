@@ -75,7 +75,7 @@ public sealed class SkillPackRegistry(
             ?? throw new InvalidOperationException($"Skill pack manifest '{manifestPath}' could not be parsed.");
         Validate(manifest);
 
-        var targetDirectory = pathService.Combine(GetWorkspaceRoot(workspaceRoot, ensureExists: true), manifest.Id);
+        var targetDirectory = GetScopedPackDirectory(workspaceRoot, manifest.Id, ensureExists: true);
         fileSystem.CreateDirectory(targetDirectory);
         await fileSystem.WriteAllTextAsync(
             pathService.Combine(targetDirectory, ManifestFileName),
@@ -98,7 +98,7 @@ public sealed class SkillPackRegistry(
     public Task<bool> EnableAsync(string workspaceRoot, string skillId, CancellationToken cancellationToken)
     {
         _ = cancellationToken;
-        var directory = pathService.Combine(GetWorkspaceRoot(workspaceRoot, ensureExists: false), skillId);
+        var directory = GetScopedPackDirectory(workspaceRoot, skillId, ensureExists: false);
         if (!fileSystem.DirectoryExists(directory))
         {
             return Task.FromResult(false);
@@ -111,7 +111,7 @@ public sealed class SkillPackRegistry(
     /// <inheritdoc />
     public async Task<bool> DisableAsync(string workspaceRoot, string skillId, CancellationToken cancellationToken)
     {
-        var directory = pathService.Combine(GetWorkspaceRoot(workspaceRoot, ensureExists: false), skillId);
+        var directory = GetScopedPackDirectory(workspaceRoot, skillId, ensureExists: false);
         if (!fileSystem.DirectoryExists(directory))
         {
             return false;
@@ -149,8 +149,30 @@ public sealed class SkillPackRegistry(
             return null;
         }
 
-        var manifest = JsonSerializer.Deserialize(manifestText, ProtocolJsonContext.Default.SkillPackManifest);
+        SkillPackManifest? manifest;
+        try
+        {
+            manifest = JsonSerializer.Deserialize(manifestText, ProtocolJsonContext.Default.SkillPackManifest);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+
         if (manifest is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            Validate(manifest);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
         {
             return null;
         }
@@ -176,14 +198,53 @@ public sealed class SkillPackRegistry(
         return root;
     }
 
+    private string GetScopedPackDirectory(string workspaceRoot, string skillId, bool ensureExists)
+    {
+        ValidateSkillPackId(skillId);
+        var root = pathService.GetFullPath(GetWorkspaceRoot(workspaceRoot, ensureExists));
+        var directory = pathService.GetFullPath(pathService.Combine(root, skillId));
+        var normalizedRoot = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        if (!directory.StartsWith(normalizedRoot, PathComparison))
+        {
+            throw new InvalidOperationException($"Skill pack id '{skillId}' escapes the skill-pack root.");
+        }
+
+        return directory;
+    }
+
     private static void Validate(SkillPackManifest manifest)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(manifest.Id);
-        ArgumentException.ThrowIfNullOrWhiteSpace(manifest.Name);
-        ArgumentException.ThrowIfNullOrWhiteSpace(manifest.Version);
-        ArgumentException.ThrowIfNullOrWhiteSpace(manifest.Description);
-        ArgumentException.ThrowIfNullOrWhiteSpace(manifest.EntryPointPrompt);
+        ValidateSkillPackId(manifest.Id);
+        ThrowIfMissing(manifest.Name, nameof(manifest.Name));
+        ThrowIfMissing(manifest.Version, nameof(manifest.Version));
+        ThrowIfMissing(manifest.Description, nameof(manifest.Description));
+        ThrowIfMissing(manifest.EntryPointPrompt, nameof(manifest.EntryPointPrompt));
     }
+
+    private static void ValidateSkillPackId(string? id)
+    {
+        ThrowIfMissing(id, nameof(SkillPackManifest.Id));
+        var safeId = id!;
+        if (Path.IsPathRooted(safeId)
+            || safeId.Contains("..", StringComparison.Ordinal)
+            || safeId.IndexOf(Path.DirectorySeparatorChar) >= 0
+            || safeId.IndexOf(Path.AltDirectorySeparatorChar) >= 0
+            || safeId.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            throw new InvalidOperationException($"Skill pack id '{safeId}' must be a safe single directory name.");
+        }
+    }
+
+    private static void ThrowIfMissing(string? value, string fieldName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException($"Skill pack manifest field '{fieldName}' is required.", fieldName);
+        }
+    }
+
+    private static StringComparison PathComparison
+        => OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
     private static IReadOnlyList<SkillPack> BuiltInPacks()
         =>

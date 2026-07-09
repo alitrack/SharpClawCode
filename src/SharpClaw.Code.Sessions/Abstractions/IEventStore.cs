@@ -24,4 +24,18 @@ public interface IEventStore
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The session runtime events.</returns>
     Task<IReadOnlyList<RuntimeEvent>> ReadAllAsync(string workspacePath, string sessionId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Reads the latest runtime events for a session in chronological order.
+    /// </summary>
+    /// <param name="workspacePath">The workspace root path.</param>
+    /// <param name="sessionId">The session identifier.</param>
+    /// <param name="count">The maximum number of events to read.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The latest session runtime events.</returns>
+    async Task<IReadOnlyList<RuntimeEvent>> ReadLatestAsync(string workspacePath, string sessionId, int count, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
+        return (await ReadAllAsync(workspacePath, sessionId, cancellationToken).ConfigureAwait(false)).TakeLast(count).ToArray();
+    }
 }

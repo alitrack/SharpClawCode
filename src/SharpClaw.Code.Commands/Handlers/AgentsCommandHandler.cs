@@ -206,7 +206,19 @@ public sealed class AgentsCommandHandler(
     }
 
     private static ExternalAgentMode ParseMode(string? value)
-        => string.Equals(value, "readOnly", StringComparison.OrdinalIgnoreCase) || string.Equals(value, "read", StringComparison.OrdinalIgnoreCase)
-            ? ExternalAgentMode.ReadOnly
-            : ExternalAgentMode.WorkspaceWrite;
+    {
+        if (string.Equals(value, "readOnly", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "read", StringComparison.OrdinalIgnoreCase))
+        {
+            return ExternalAgentMode.ReadOnly;
+        }
+
+        if (string.Equals(value, "workspaceWrite", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "write", StringComparison.OrdinalIgnoreCase))
+        {
+            return ExternalAgentMode.WorkspaceWrite;
+        }
+
+        throw new ArgumentException($"Unsupported external agent mode '{value}'. Expected readOnly or workspaceWrite.", nameof(value));
+    }
 }

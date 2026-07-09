@@ -15,7 +15,10 @@ public sealed class GenericWorkItemProvider(IFileSystem fileSystem, IPathService
     public string Provider => "generic";
 
     /// <inheritdoc />
-    public bool CanImport(string idOrUrl) => idOrUrl.EndsWith(".json", StringComparison.OrdinalIgnoreCase) || idOrUrl.TrimStart().StartsWith('{');
+    public bool CanImport(string idOrUrl)
+        => idOrUrl.TrimStart().StartsWith('{')
+            || (idOrUrl.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+                && fileSystem.FileExists(pathService.GetFullPath(idOrUrl)));
 
     /// <inheritdoc />
     public async Task<WorkItem> ImportAsync(WorkItemImportRequest request, CancellationToken cancellationToken)
@@ -24,8 +27,17 @@ public sealed class GenericWorkItemProvider(IFileSystem fileSystem, IPathService
             ? request.IdOrUrl
             : await fileSystem.ReadAllTextIfExistsAsync(pathService.GetFullPath(request.IdOrUrl), cancellationToken).ConfigureAwait(false)
                 ?? throw new InvalidOperationException($"Generic work-item fixture '{request.IdOrUrl}' was not found.");
-        var fixture = JsonSerializer.Deserialize(json, ProtocolJsonContext.Default.GenericWorkItemFixture)
-            ?? throw new InvalidOperationException("Generic work-item fixture could not be parsed.");
+        GenericWorkItemFixture fixture;
+        try
+        {
+            fixture = JsonSerializer.Deserialize(json, ProtocolJsonContext.Default.GenericWorkItemFixture)
+                ?? throw new InvalidOperationException("Generic work-item fixture could not be parsed.");
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException("Generic work-item fixture could not be parsed.", ex);
+        }
+
         return fixture.ToWorkItem();
     }
 }

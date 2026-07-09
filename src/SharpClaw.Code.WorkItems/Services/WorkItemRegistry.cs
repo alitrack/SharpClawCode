@@ -11,6 +11,18 @@ public sealed class WorkItemRegistry(IEnumerable<IWorkItemProvider> providers) :
 
     /// <inheritdoc />
     public IWorkItemProvider? Resolve(string provider, string idOrUrl)
-        => orderedProviders.FirstOrDefault(item => string.Equals(item.Provider, provider, StringComparison.OrdinalIgnoreCase))
-            ?? orderedProviders.FirstOrDefault(item => item.CanImport(idOrUrl));
+    {
+        var direct = orderedProviders.FirstOrDefault(item => string.Equals(item.Provider, provider, StringComparison.OrdinalIgnoreCase));
+        if (direct is not null)
+        {
+            return direct;
+        }
+
+        if (!string.IsNullOrWhiteSpace(provider))
+        {
+            return null;
+        }
+
+        return orderedProviders.FirstOrDefault(item => item.CanImport(idOrUrl));
+    }
 }

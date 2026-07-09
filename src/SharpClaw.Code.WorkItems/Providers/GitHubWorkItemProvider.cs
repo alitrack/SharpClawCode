@@ -8,9 +8,16 @@ namespace SharpClaw.Code.WorkItems.Providers;
 /// <summary>
 /// Imports GitHub issues and pull requests from public REST endpoints or a local token.
 /// </summary>
-public sealed class GitHubWorkItemProvider : IWorkItemProvider
+public sealed class GitHubWorkItemProvider(
+    IHttpClientFactory httpClientFactory,
+    IWorkItemConfigProvider configProvider) : IWorkItemProvider
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    /// <summary>
+    /// Named HTTP client used for GitHub work-item imports.
+    /// </summary>
+    public const string HttpClientName = "SharpClaw.GitHubWorkItems";
 
     /// <inheritdoc />
     public string Provider => "github";
@@ -26,16 +33,24 @@ public sealed class GitHubWorkItemProvider : IWorkItemProvider
             throw new InvalidOperationException($"'{request.IdOrUrl}' is not a supported GitHub issue or PR URL.");
         }
 
-        using var client = new HttpClient();
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("SharpClawCode", "1.0"));
-        var token = Environment.GetEnvironmentVariable("GITHUB_TOKEN");
-        if (!string.IsNullOrWhiteSpace(token))
+        var config = await configProvider.GetConfigAsync(request.WorkspacePath, cancellationToken).ConfigureAwait(false);
+        if (!config.Enabled)
         {
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            throw new InvalidOperationException("Work-item integrations are disabled.");
         }
 
-        var endpoint = $"https://api.github.com/repos/{reference.Owner}/{reference.Repository}/{(reference.Kind == "pull" ? "pulls" : "issues")}/{reference.Number}";
-        using var response = await client.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
+        var client = httpClientFactory.CreateClient(HttpClientName);
+        var tokenEnvironmentVariable = string.IsNullOrWhiteSpace(config.GitHubTokenEnvironmentVariable)
+            ? "GITHUB_TOKEN"
+            : config.GitHubTokenEnvironmentVariable;
+        var token = Environment.GetEnvironmentVariable(tokenEnvironmentVariable);
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{reference.Owner}/{reference.Repository}/{(reference.Kind == "pull" ? "pulls" : "issues")}/{reference.Number}");
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        using var response = await client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);

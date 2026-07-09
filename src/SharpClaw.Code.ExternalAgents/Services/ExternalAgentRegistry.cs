@@ -26,7 +26,23 @@ public sealed class ExternalAgentRegistry(
         var statuses = new List<ExternalAgentStatus>(orderedAdapters.Length);
         foreach (var adapter in orderedAdapters)
         {
-            statuses.Add(await adapter.GetStatusAsync(workspaceRoot, cancellationToken).ConfigureAwait(false));
+            try
+            {
+                statuses.Add(await adapter.GetStatusAsync(workspaceRoot, cancellationToken).ConfigureAwait(false));
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                statuses.Add(new ExternalAgentStatus(
+                    adapter.Descriptor,
+                    ExternalAgentHealth.Faulted,
+                    Enabled: true,
+                    ExecutablePath: null,
+                    Detail: ex.ToString()));
+            }
         }
 
         return new ExternalAgentCatalogReport(config.Enabled, config.RequireApprovalForMutatingRuns, statuses);

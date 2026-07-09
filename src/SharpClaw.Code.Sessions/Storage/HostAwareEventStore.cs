@@ -22,6 +22,10 @@ public sealed class HostAwareEventStore(
     public Task<IReadOnlyList<RuntimeEvent>> ReadAllAsync(string workspacePath, string sessionId, CancellationToken cancellationToken)
         => ResolveStore().ReadAllAsync(workspacePath, sessionId, cancellationToken);
 
+    /// <inheritdoc />
+    public Task<IReadOnlyList<RuntimeEvent>> ReadLatestAsync(string workspacePath, string sessionId, int count, CancellationToken cancellationToken)
+        => ResolveStore().ReadLatestAsync(workspacePath, sessionId, count, cancellationToken);
+
     private IEventStore ResolveStore()
         => hostContextAccessor.Current?.SessionStoreKind == SessionStoreKind.Sqlite
             ? sqliteEventStore

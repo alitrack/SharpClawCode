@@ -38,4 +38,4 @@ In the REPL:
 /agents external run codex Review this repository
 ```
 
-MVP support is text-mode process execution. Structured streaming is deferred until external CLIs expose stable machine-readable streams.
+MVP support is text-mode process execution. Structured streaming is deferred until external CLIs expose stable machine-readable streams. Prompts are currently passed through each CLI's text-mode argument surface, so very large prompts should be run from a SharpClaw session or skill context rather than pasted as a single command argument.

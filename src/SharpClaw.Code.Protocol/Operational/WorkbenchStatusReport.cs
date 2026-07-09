@@ -16,7 +16,6 @@ public sealed record WorkbenchStatusReport(
     string? ActiveAgentId,
     string RuntimeState,
     ApprovalSettings? ApprovalSettings,
-    int PendingApprovalCount,
     RuntimeCheckpoint? LatestCheckpoint,
     IReadOnlyList<string> RecentActivity,
     IReadOnlyList<ExternalAgentStatus> ExternalAgents,

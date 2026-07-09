@@ -30,12 +30,14 @@ using SharpClaw.Code.Runtime.Specs;
 using SharpClaw.Code.Runtime.Server;
 using SharpClaw.Code.Runtime.Workflow;
 using SharpClaw.Code.Runtime.Turns;
+using SharpClaw.Code.Runtime.WorkItems;
 using SharpClaw.Code.Sessions.Abstractions;
 using SharpClaw.Code.Sessions.Storage;
 using SharpClaw.Code.Telemetry;
 using SharpClaw.Code.Telemetry.Abstractions;
 using SharpClaw.Code.Telemetry.Services;
 using SharpClaw.Code.WorkItems;
+using SharpClaw.Code.WorkItems.Abstractions;
 
 namespace SharpClaw.Code.Runtime.Composition;
 
@@ -102,6 +104,7 @@ public static class RuntimeServiceCollectionExtensions
         services.AddSharpClawSkills();
         services.AddSharpClawGit();
         services.AddSharpClawWorkItems();
+        services.AddSingleton<IWorkItemConfigProvider, RuntimeWorkItemConfigProvider>();
         services.AddSingleton<IUsageMeteringStore, SqliteUsageMeteringStore>();
         services.AddSingleton<UsageMeteringService>();
         services.AddSingleton<IUsageMeteringService>(serviceProvider => serviceProvider.GetRequiredService<UsageMeteringService>());

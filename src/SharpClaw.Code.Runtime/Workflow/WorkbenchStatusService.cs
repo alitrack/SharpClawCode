@@ -37,7 +37,7 @@ public sealed class WorkbenchStatusService(
             : await checkpointStore.GetLatestAsync(workspace, session.Id, cancellationToken).ConfigureAwait(false);
         var events = session is null
             ? Array.Empty<RuntimeEvent>()
-            : (await eventStore.ReadAllAsync(workspace, session.Id, cancellationToken).ConfigureAwait(false)).TakeLast(8).ToArray();
+            : await eventStore.ReadLatestAsync(workspace, session.Id, 8, cancellationToken).ConfigureAwait(false);
         var external = await externalAgentService.ListAsync(workspace, cancellationToken).ConfigureAwait(false);
         var status = await diagnosticsCoordinator.BuildStatusReportAsync(
             new OperationalDiagnosticsInput(workspace, context.Model, context.PermissionMode, context.OutputFormat, context.PrimaryMode, context.ApprovalSettings),
@@ -53,7 +53,6 @@ public sealed class WorkbenchStatusService(
             ResolveMetadata(session, SharpClawWorkflowMetadataKeys.ActiveAgentId),
             status.RuntimeState,
             status.ApprovalSettings,
-            0,
             checkpoint,
             events.Select(Summarize).ToArray(),
             external.Agents,

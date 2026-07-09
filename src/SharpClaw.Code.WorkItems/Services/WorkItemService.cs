@@ -62,10 +62,15 @@ public sealed class WorkItemService(
             : await sessionStore.GetByIdAsync(workspace, request.SessionId, cancellationToken).ConfigureAwait(false);
         if (session is null)
         {
-            throw new InvalidOperationException("No session found to export.");
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(request.SessionId)
+                ? "No session found to export."
+                : $"Session '{request.SessionId}' was not found.");
         }
 
         var workItem = ReadWorkItem(session);
+        var provider = string.IsNullOrWhiteSpace(request.Provider)
+            ? workItem?.Provider ?? string.Empty
+            : request.Provider;
         var events = await eventStore.ReadAllAsync(workspace, session.Id, cancellationToken).ConfigureAwait(false);
         var markdown = RenderMarkdown(session, workItem, events);
         var content = string.Equals(request.ExportFormat, "json", StringComparison.OrdinalIgnoreCase)
@@ -80,7 +85,7 @@ public sealed class WorkItemService(
         await PublishAsync(
             workspace,
             session.Id,
-            new WorkItemSummaryExportedEvent(CreateIdentifier("event"), session.Id, null, systemClock.UtcNow, request.Provider, request.ExportFormat),
+            new WorkItemSummaryExportedEvent(CreateIdentifier("event"), session.Id, null, systemClock.UtcNow, provider, request.ExportFormat),
             cancellationToken).ConfigureAwait(false);
         return export;
     }
@@ -91,6 +96,12 @@ public sealed class WorkItemService(
         if (!string.IsNullOrWhiteSpace(sessionId))
         {
             session = await sessionStore.GetByIdAsync(workspace, sessionId, cancellationToken).ConfigureAwait(false);
+            if (session is null)
+            {
+                throw new InvalidOperationException($"Session '{sessionId}' was not found.");
+            }
+
+            return (session, false);
         }
 
         session ??= await sessionStore.GetLatestAsync(workspace, cancellationToken).ConfigureAwait(false);

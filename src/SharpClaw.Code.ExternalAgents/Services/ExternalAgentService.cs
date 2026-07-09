@@ -86,7 +86,26 @@ public sealed class ExternalAgentService(
                 request.Mode),
             cancellationToken).ConfigureAwait(false);
 
-        var result = await adapter.RunAsync(request with { WorkspacePath = workspace, SessionId = session.Id }, cancellationToken).ConfigureAwait(false);
+        ExternalAgentRunResult result;
+        try
+        {
+            result = await adapter.RunAsync(request with { WorkspacePath = workspace, SessionId = session.Id }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            result = new ExternalAgentRunResult(
+                request.AdapterId,
+                1,
+                ex.ToString(),
+                [],
+                null,
+                ExternalAgentFailureKind.Unexpected,
+                ex.Message);
+        }
         if (result.FailureKind is ExternalAgentFailureKind.None)
         {
             await PublishAsync(
@@ -118,11 +137,11 @@ public sealed class ExternalAgentService(
         if (!string.IsNullOrWhiteSpace(request.SessionId))
         {
             session = await sessionStore.GetByIdAsync(workspace, request.SessionId, cancellationToken).ConfigureAwait(false);
-        }
+            if (session is null)
+            {
+                throw new InvalidOperationException($"Session '{request.SessionId}' was not found.");
+            }
 
-        session ??= await sessionStore.GetLatestAsync(workspace, cancellationToken).ConfigureAwait(false);
-        if (session is not null)
-        {
             return session;
         }
 

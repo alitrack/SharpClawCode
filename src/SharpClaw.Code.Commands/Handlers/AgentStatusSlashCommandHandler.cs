@@ -15,5 +15,5 @@ public sealed class AgentStatusSlashCommandHandler(AgentsCommandHandler agentsCo
 
     /// <inheritdoc />
     public Task<int> ExecuteAsync(SlashCommandParseResult command, CommandExecutionContext context, CancellationToken cancellationToken)
-        => agentsCommandHandler.ExecuteAsync(new SlashCommandParseResult(true, "agents", ["external", "status"]), context, cancellationToken);
+        => agentsCommandHandler.ExecuteAsync(new SlashCommandParseResult(true, CommandName, ["external", "status"]), context, cancellationToken);
 }

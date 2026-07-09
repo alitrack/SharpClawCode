@@ -13,6 +13,6 @@ public sealed class DefaultExternalAgentConfigProvider : IExternalAgentConfigPro
     {
         _ = workspaceRoot;
         _ = cancellationToken;
-        return Task.FromResult(new ExternalAgentsConfig(Enabled: true));
+        return Task.FromResult(new ExternalAgentsConfig());
     }
 }

@@ -31,10 +31,10 @@ public sealed class WorkCommandHandler(
         var command = new Command(Name, Description);
         var import = new Command("import", "Imports a GitHub URL or generic JSON fixture into a session.");
         var url = new Argument<string>("url") { Description = "Work item URL or JSON fixture path." };
-        var provider = new Option<string>("--provider") { DefaultValueFactory = _ => "github", Description = "Provider id: github or generic." };
+        var provider = new Option<string?>("--provider") { Description = "Provider id: github or generic. Omit to auto-detect." };
         import.Arguments.Add(url);
         import.Options.Add(provider);
-        import.SetAction((parseResult, cancellationToken) => ExecuteImportAsync(parseResult.GetValue(provider)!, parseResult.GetValue(url)!, globalOptions.Resolve(parseResult), cancellationToken));
+        import.SetAction((parseResult, cancellationToken) => ExecuteImportAsync(parseResult.GetValue(provider), parseResult.GetValue(url)!, globalOptions.Resolve(parseResult), cancellationToken));
         command.Subcommands.Add(import);
 
         var show = new Command("show", "Shows the imported work item for the current session.");
@@ -55,7 +55,7 @@ public sealed class WorkCommandHandler(
     {
         if (command.Arguments.Length >= 2 && string.Equals(command.Arguments[0], "import", StringComparison.OrdinalIgnoreCase))
         {
-            return ExecuteImportAsync("github", command.Arguments[1], context, cancellationToken);
+            return ExecuteImportAsync(null, command.Arguments[1], context, cancellationToken);
         }
 
         if (command.Arguments.Length == 0 || string.Equals(command.Arguments[0], "show", StringComparison.OrdinalIgnoreCase))
@@ -71,10 +71,10 @@ public sealed class WorkCommandHandler(
         return RenderAsync(new CommandResult(false, 1, context.OutputFormat, "Usage: /work [import <url>|show|export-summary]", null), context, cancellationToken);
     }
 
-    private async Task<int> ExecuteImportAsync(string provider, string idOrUrl, CommandExecutionContext context, CancellationToken cancellationToken)
+    private async Task<int> ExecuteImportAsync(string? provider, string idOrUrl, CommandExecutionContext context, CancellationToken cancellationToken)
     {
         var result = await workItemService
-            .ImportAsync(new WorkItemImportRequest(provider, idOrUrl, context.WorkingDirectory, SessionId: context.SessionId), cancellationToken)
+            .ImportAsync(new WorkItemImportRequest(provider ?? string.Empty, idOrUrl, context.WorkingDirectory, SessionId: context.SessionId), cancellationToken)
             .ConfigureAwait(false);
         return await RenderAsync(
             new CommandResult(
@@ -90,7 +90,7 @@ public sealed class WorkCommandHandler(
     private async Task<int> ExecuteExportSummaryAsync(string format, CommandExecutionContext context, CancellationToken cancellationToken)
     {
         var result = await workItemService
-            .ExportSummaryAsync(new WorkItemExportRequest("github", context.SessionId, null, format), context.WorkingDirectory, cancellationToken)
+            .ExportSummaryAsync(new WorkItemExportRequest(string.Empty, context.SessionId, null, format), context.WorkingDirectory, cancellationToken)
             .ConfigureAwait(false);
         return await RenderAsync(
             new CommandResult(

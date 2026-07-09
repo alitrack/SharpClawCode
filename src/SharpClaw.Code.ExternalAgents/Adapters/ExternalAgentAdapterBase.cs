@@ -57,10 +57,11 @@ public abstract class ExternalAgentAdapterBase(
             return Failure(request.AdapterId, ExternalAgentFailureKind.Disabled, "External agent adapter is disabled.");
         }
 
-        var executable = executableResolver.Resolve(ResolveExecutable(adapterConfig));
+        var executableNameOrPath = ResolveExecutable(adapterConfig);
+        var executable = executableResolver.Resolve(executableNameOrPath);
         if (executable is null)
         {
-            return Failure(request.AdapterId, ExternalAgentFailureKind.ExecutableMissing, $"Executable '{Descriptor.ExecutableName}' was not found.");
+            return Failure(request.AdapterId, ExternalAgentFailureKind.ExecutableMissing, $"Executable '{executableNameOrPath}' was not found.");
         }
 
         try

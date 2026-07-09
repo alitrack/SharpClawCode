@@ -26,8 +26,20 @@ public sealed class PathExternalAgentExecutableResolver : IExternalAgentExecutab
             ? (Environment.GetEnvironmentVariable("PATHEXT") ?? ".EXE;.CMD;.BAT").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             : [string.Empty];
 
+        var hasExtension = Path.HasExtension(executableNameOrPath);
         foreach (var directory in paths)
         {
+            if (hasExtension)
+            {
+                var candidate = Path.Combine(directory, executableNameOrPath);
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+
+                continue;
+            }
+
             foreach (var extension in extensions)
             {
                 var candidate = Path.Combine(directory, executableNameOrPath + extension);
