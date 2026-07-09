@@ -92,7 +92,10 @@ public sealed class SharpClawConfigService(
             MergeByKey(user?.Agents, workspace?.Agents, static item => item.Id),
             MergeByKey(user?.LspServers, workspace?.LspServers, static item => item.Id),
             MergeByKey(user?.Hooks, workspace?.Hooks, static item => item.Name),
-            MergeByKey(user?.ConnectLinks, workspace?.ConnectLinks, static item => item.Target));
+            MergeByKey(user?.ConnectLinks, workspace?.ConnectLinks, static item => item.Target),
+            MergeExternalAgents(user?.ExternalAgents, workspace?.ExternalAgents),
+            workspace?.SkillPacks ?? user?.SkillPacks ?? new SkillPacksConfig(),
+            workspace?.WorkItems ?? user?.WorkItems ?? new WorkItemsConfig());
     }
 
     private static List<T>? MergeByKey<T>(
@@ -123,7 +126,29 @@ public sealed class SharpClawConfigService(
             null,
             null,
             null,
-            null);
+            null,
+            new ExternalAgentsConfig(),
+            new SkillPacksConfig(),
+            new WorkItemsConfig());
+
+    private static ExternalAgentsConfig MergeExternalAgents(ExternalAgentsConfig? user, ExternalAgentsConfig? workspace)
+    {
+        var adapters = new Dictionary<string, ExternalAgentAdapterConfig>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in user?.Adapters ?? [])
+        {
+            adapters[pair.Key] = pair.Value;
+        }
+
+        foreach (var pair in workspace?.Adapters ?? [])
+        {
+            adapters[pair.Key] = pair.Value;
+        }
+
+        return new ExternalAgentsConfig(
+            workspace?.Enabled ?? user?.Enabled ?? false,
+            adapters.Count == 0 ? null : adapters,
+            workspace?.RequireApprovalForMutatingRuns ?? user?.RequireApprovalForMutatingRuns ?? true);
+    }
 
     private static string GetUserConfigPath()
     {

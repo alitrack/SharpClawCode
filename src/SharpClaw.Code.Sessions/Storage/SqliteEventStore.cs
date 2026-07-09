@@ -66,4 +66,43 @@ public sealed class SqliteEventStore(
 
         return events;
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RuntimeEvent>> ReadLatestAsync(string workspacePath, string sessionId, int count, CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
+
+        await using var connection = await SqliteSessionStoreDatabase
+            .OpenConnectionAsync(fileSystem, storagePathResolver, workspacePath, cancellationToken)
+            .ConfigureAwait(false);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT payload_json
+            FROM runtime_events
+            WHERE session_id = $sessionId
+            ORDER BY sequence DESC
+            LIMIT $count;
+            """;
+        command.Parameters.AddWithValue("$sessionId", sessionId);
+        command.Parameters.AddWithValue("$count", count);
+
+        var events = new List<RuntimeEvent>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
+            if (reader.IsDBNull(0))
+            {
+                continue;
+            }
+
+            var runtimeEvent = JsonSerializer.Deserialize(reader.GetString(0), ProtocolJsonContext.Default.RuntimeEvent);
+            if (runtimeEvent is not null)
+            {
+                events.Add(runtimeEvent);
+            }
+        }
+
+        events.Reverse();
+        return events;
+    }
 }

@@ -228,6 +228,10 @@ Subcommands include `prompt`, `repl`, `doctor`, `status`, `session`, `index`, `m
 | [docs/tools.md](docs/tools.md) | Tool registry, executor behavior, and built-ins |
 | [docs/permissions.md](docs/permissions.md) | Permission modes, policies, and approvals |
 | [docs/agents.md](docs/agents.md) | Agent Framework integration |
+| [docs/external-agents.md](docs/external-agents.md) | External agent adapters and supervised CLI runs |
+| [docs/skills.md](docs/skills.md) | Skill packs, built-in workflows, and install/run commands |
+| [docs/work-items.md](docs/work-items.md) | GitHub and generic work-item import/export |
+| [docs/workbench.md](docs/workbench.md) | Static runtime workbench/status surfaces |
 | [docs/mcp.md](docs/mcp.md) | MCP registration, lifecycle, and orchestration |
 | [docs/acp.md](docs/acp.md) | ACP stdio host and protocol notes |
 | [docs/plugins.md](docs/plugins.md) | Plugin discovery, trust, and CLI flows |

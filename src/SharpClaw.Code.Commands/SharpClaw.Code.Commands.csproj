@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SharpClaw.Code.Acp\SharpClaw.Code.Acp.csproj" />
+    <ProjectReference Include="..\SharpClaw.Code.ExternalAgents\SharpClaw.Code.ExternalAgents.csproj" />
     <ProjectReference Include="..\SharpClaw.Code.Infrastructure\SharpClaw.Code.Infrastructure.csproj" />
     <ProjectReference Include="..\SharpClaw.Code.Memory\SharpClaw.Code.Memory.csproj" />
     <ProjectReference Include="..\SharpClaw.Code.Mcp\SharpClaw.Code.Mcp.csproj" />
@@ -18,6 +19,7 @@
     <ProjectReference Include="..\SharpClaw.Code.Runtime\SharpClaw.Code.Runtime.csproj" />
     <ProjectReference Include="..\SharpClaw.Code.Telemetry\SharpClaw.Code.Telemetry.csproj" />
     <ProjectReference Include="..\SharpClaw.Code.Tools\SharpClaw.Code.Tools.csproj" />
+    <ProjectReference Include="..\SharpClaw.Code.WorkItems\SharpClaw.Code.WorkItems.csproj" />
   </ItemGroup>
 
 </Project>

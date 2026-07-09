@@ -179,6 +179,9 @@ public sealed record ConnectLinkDefinition(
 /// <param name="LspServers">Configured diagnostics sources.</param>
 /// <param name="Hooks">Configured runtime hooks.</param>
 /// <param name="ConnectLinks">Optional auth/connect entry points.</param>
+/// <param name="ExternalAgents">External agent adapter configuration.</param>
+/// <param name="SkillPacks">Skill-pack ecosystem configuration.</param>
+/// <param name="WorkItems">Work-item integration configuration.</param>
 public sealed record SharpClawConfigDocument(
     ShareMode? ShareMode,
     SharpClawServerOptions? Server,
@@ -186,7 +189,10 @@ public sealed record SharpClawConfigDocument(
     List<ConfiguredAgentDefinition>? Agents,
     List<ConfiguredLspServerDefinition>? LspServers,
     List<HookDefinition>? Hooks,
-    List<ConnectLinkDefinition>? ConnectLinks);
+    List<ConnectLinkDefinition>? ConnectLinks,
+    ExternalAgentsConfig? ExternalAgents = null,
+    SkillPacksConfig? SkillPacks = null,
+    WorkItemsConfig? WorkItems = null);
 
 /// <summary>
 /// Materialized configuration snapshot after user/workspace precedence is applied.

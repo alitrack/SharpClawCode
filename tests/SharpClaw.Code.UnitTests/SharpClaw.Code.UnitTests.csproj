@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\SharpClaw.Code.Agents\SharpClaw.Code.Agents.csproj" />
     <ProjectReference Include="..\..\src\SharpClaw.Code.Acp\SharpClaw.Code.Acp.csproj" />
     <ProjectReference Include="..\..\src\SharpClaw.Code.Commands\SharpClaw.Code.Commands.csproj" />
+    <ProjectReference Include="..\..\src\SharpClaw.Code.ExternalAgents\SharpClaw.Code.ExternalAgents.csproj" />
     <ProjectReference Include="..\..\src\SharpClaw.Code.Git\SharpClaw.Code.Git.csproj" />
     <ProjectReference Include="..\..\src\SharpClaw.Code.Infrastructure\SharpClaw.Code.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\SharpClaw.Code.Memory\SharpClaw.Code.Memory.csproj" />
@@ -37,6 +38,7 @@
     <ProjectReference Include="..\..\src\SharpClaw.Code.Telemetry\SharpClaw.Code.Telemetry.csproj" />
     <ProjectReference Include="..\..\src\SharpClaw.Code.Tools\SharpClaw.Code.Tools.csproj" />
     <ProjectReference Include="..\..\src\SharpClaw.Code.Web\SharpClaw.Code.Web.csproj" />
+    <ProjectReference Include="..\..\src\SharpClaw.Code.WorkItems\SharpClaw.Code.WorkItems.csproj" />
     <ProjectReference Include="..\SharpClaw.Code.MockProvider\SharpClaw.Code.MockProvider.csproj" />
     <ProjectReference Include="..\..\src\SharpClaw.Testing.Abstractions\SharpClaw.Testing.Abstractions.csproj" />
     <ProjectReference Include="..\..\src\SharpClaw.Testing.Harness\SharpClaw.Testing.Harness.csproj" />
